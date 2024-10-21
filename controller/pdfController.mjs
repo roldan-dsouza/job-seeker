@@ -159,7 +159,7 @@ function createSalaryMessages(formattedText, location) {
   return [
     {
       role: "system",
-      content: `Generate a list of jobs along with their corresponding salary ranges based on the provided resume text. Ensure that the salary ranges are relevant to the skills and experience mentioned in the resume. The response should include job titles and salary ranges in a professional manner. Also, make sure it's in JSON format with job name and salary and do not include anything else in the response other than the JSON.`,
+      content: `Generate a list of jobs along with their corresponding salary ranges based on the provided resume text. Ensure that the salary ranges are relevant to the skills and experience mentioned in the resume. The response should include job titles and salary ranges in a professional manner. The JSON format must strictly follow this structure: [{ "job": "Job Title", "salary": "Salary Range" }, ...]. Do not include anything else in the response other than this JSON format.`,
     },
     {
       role: "user",
