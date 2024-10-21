@@ -1,8 +1,16 @@
 import { Router } from "express";
-import { pdfFunction, upload } from "../controller/pdfController.mjs";
+import {
+  getInsights,
+  getJobLinks,
+  getSalaryRanges,
+  pdfFunction,
+  upload,
+} from "../controller/pdfController.mjs";
 
 const router = Router();
 
-router.post("/upload", upload, pdfFunction);
+router.post("/insights", upload, getInsights);
+router.post("/jobLinks", upload, getJobLinks);
+router.post("/salaryRange", upload, getSalaryRanges);
 
 export default router;

@@ -7,7 +7,7 @@ import NodeCache from "node-cache";
 const storage = multer.memoryStorage();
 export const upload = multer({ storage }).single("pdfFile");
 
-const cache = new NodeCache({ stdTTL: 86400 });
+const cache = new NodeCache({ stdTTL: 60 }); // Cache for 1 minute
 
 // API Endpoint Constants
 const CLOUDFLARE_BASE_URL = `https://api.cloudflare.com/client/v4/accounts/${process.env.CLOUDFLARE_ACCOUNT_ID}/ai/run/`;
@@ -17,54 +17,93 @@ const AUTHORIZATION_HEADER = {
 };
 
 // Main function to handle PDF processing
-export const pdfFunction = async (req, res) => {
+export const pdfFunction = async (buffer, ip) => {
+  // Check cache
+  const cachedData = cache.get(ip);
+  if (cachedData) {
+    return cachedData; // Return cached data if available
+  }
+
+  // Parse the PDF file
+  const pdfData = await parsePdf(buffer);
+  const formattedText = pdfData.text.replace(/\n\n/g, "\n");
+
+  // Store in cache
+  cache.set(ip, formattedText); // Cache the processed text
+  return formattedText;
+};
+
+// Middleware for getting insights
+export const getInsights = async (req, res) => {
   if (!req.file) {
     return res.status(400).json({ error: "No file uploaded" });
   }
-  const { location } = req.body;
-  if (!location) {
-    return res.status(400).json({ error: "Job-location is not specified" });
-  }
-  if (
-    location !== "onLocation" &&
-    location !== "remote" &&
-    location !== "hybrid"
-  ) {
-    return res.status(404).json({ error: "Invalid location preference" });
-  }
-
   try {
-    // Parse the PDF file
-    const pdfData = await parsePdf(req.file.buffer);
-    const formattedText = pdfData.text.replace(/\n\n/g, "\n");
+    const formattedText = await pdfFunction(req.file.buffer, req.ip);
+    const insightsMessages = createInsightsMessages(formattedText);
+    const insights = await fetchFromCloudflare(insightsMessages);
 
-    // Store parsed PDF data in cache
-    cache.set(req.file.originalname, pdfData);
-
-    // Prepare messages for the API requests
-    const messages = createMessages(formattedText);
-    const jobsmessages = createJobMessages(formattedText, location); // Pass location here
-
-    // Fetch insights from Cloudflare API
-    const insights = await fetchFromCloudflare(messages);
     if (!insights) {
       return res.status(500).json({ error: "Failed to fetch insights" });
     }
 
-    // Fetch job links from Cloudflare API
-    const jobs = await fetchFromCloudflare(jobsmessages);
+    res.status(200).json({ insights: insights.result.response });
+  } catch (error) {
+    console.error("Error fetching insights:", error);
+    res.status(500).json({
+      error: "Failed to fetch insights",
+      details: error.message,
+    });
+  }
+};
+
+// Middleware for getting job links
+export const getJobLinks = async (req, res) => {
+  if (!req.file || !req.body.location) {
+    return res.status(400).json({ error: "No file or location specified" });
+  }
+  try {
+    const formattedText = await pdfFunction(req.file.buffer, req.ip);
+    const jobMessages = createJobMessages(formattedText, req.body.location);
+    const jobs = await fetchJobLinks(jobMessages);
+
     if (!jobs) {
       return res.status(500).json({ error: "Failed to fetch job links" });
     }
 
-    // Send the cleaned response back to the client
-    res
-      .status(200)
-      .json({ insights, jobs: extractLinks(jobs.result.response) });
+    res.status(200).json({ availableJobs: extractLinks(jobs.result.response) });
   } catch (error) {
-    console.error("Error processing PDF:", error);
+    console.error("Error fetching job links:", error);
     res.status(500).json({
-      error: "Failed to process PDF or fetch insights",
+      error: "Failed to fetch job links",
+      details: error.message,
+    });
+  }
+};
+
+// Middleware for getting salary ranges
+export const getSalaryRanges = async (req, res) => {
+  if (!req.file || !req.body.location) {
+    return res.status(400).json({ error: "No file or location specified" });
+  }
+  try {
+    const formattedText = await pdfFunction(req.file.buffer, req.ip);
+    const salaryMessages = createSalaryMessages(
+      formattedText,
+      req.body.location
+    );
+    const salaryRanges = await fetchSalaryRanges(salaryMessages);
+
+    if (!salaryRanges) {
+      return res.status(500).json({ error: "Failed to fetch salary ranges" });
+    }
+
+    const salRange = JSON.parse(salaryRanges.result.response);
+    res.status(200).json({ salaryRangeWithJob: salRange });
+  } catch (error) {
+    console.error("Error fetching salary ranges:", error);
+    res.status(500).json({
+      error: "Failed to fetch salary ranges",
       details: error.message,
     });
   }
@@ -85,8 +124,10 @@ async function parsePdf(buffer) {
   });
 }
 
+// ... [Rest of the functions remain unchanged]
+
 // Function to create messages for insights
-function createMessages(formattedText) {
+function createInsightsMessages(formattedText) {
   return [
     {
       role: "system",
@@ -101,15 +142,28 @@ function createMessages(formattedText) {
 
 // Function to create messages for job links
 function createJobMessages(formattedText, location) {
-  // Accept location here
   return [
     {
       role: "system",
-      content: `Based on the provided text from a resume, generate a list of links to apply for jobs using the skills and locations from my resume. DO NOT respond with anything other than the list of posts, only the links.also do not give links wher results are none and if wanted location is in india then search in naukri.com`,
+      content: `Based on the provided text from a resume, generate a list of links to apply for jobs using the skills and locations from my resume. DO NOT respond with anything other than the list of posts, only the links. Also, do not give links where results are none, and if the desired location is in India, then search in naukri.com.`,
     },
     {
       role: "user",
-      content: formattedText + ` job location preference ${location}`, // Use location here
+      content: formattedText + ` job location preference ${location}`,
+    },
+  ];
+}
+
+// Function to create messages for salary ranges
+function createSalaryMessages(formattedText, location) {
+  return [
+    {
+      role: "system",
+      content: `Generate a list of jobs along with their corresponding salary ranges based on the provided resume text. Ensure that the salary ranges are relevant to the skills and experience mentioned in the resume. The response should include job titles and salary ranges in a professional manner. Also, make sure it's in JSON format with job name and salary and do not include anything else in the response other than the JSON.`,
+    },
+    {
+      role: "user",
+      content: formattedText + ` job location preference ${location}`,
     },
   ];
 }
@@ -123,28 +177,46 @@ async function fetchFromCloudflare(messages) {
       { headers: AUTHORIZATION_HEADER }
     );
 
-    return response.data; // Return the data from the response
+    return response.data;
   } catch (error) {
     console.error(
       "Error fetching from Cloudflare:",
       error.response?.data || error.message
     );
-    return null; // Return null on error
+    return null;
   }
+}
+
+// Function to fetch job links specifically
+async function fetchJobLinks(messages) {
+  return await fetchFromCloudflare(messages);
+}
+
+// Function to fetch salary ranges specifically
+async function fetchSalaryRanges(messages) {
+  return await fetchFromCloudflare(messages);
 }
 
 // Function to extract links from the response text
 function extractLinks(text) {
-  const regex = /https?:\/\/[^\s]+/g; // Match URLs
-  const links = text.match(regex) || []; // Get matches or return empty array
+  // Check if text is in the expected format
+  if (!text || typeof text !== "string") {
+    console.error("Invalid input for extractLinks:", text);
+    return []; // Return empty array if input is invalid
+  }
 
+  // Regular expression to match URLs in the response text
+  const regex = /https?:\/\/[^\s]+/g;
+  const links = text.match(regex) || []; // Extract links or return empty array
+
+  // Return an array of objects with the link, title, and favicon
   return links.map((link) => {
     const domain = link.replace(/(^\w+:|^)\/\//, "").replace("www.", "");
     const parts = domain.split(".");
-    let title = parts.length > 2 ? parts[1] : parts[0];
-    title = title.charAt(0).toUpperCase() + title.slice(1); // Capitalize title
+    let title = parts.length > 2 ? parts[1] : parts[0]; // Get the domain title
+    title = title.charAt(0).toUpperCase() + title.slice(1); // Capitalize the title
     const favicon = `https://www.google.com/s2/favicons?sz=64&domain_url=${link}`; // Favicon URL
 
-    return { link, title, favicon }; // Return link object
+    return { link, title, favicon }; // Return an object with link data
   });
 }
