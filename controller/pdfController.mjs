@@ -2,6 +2,8 @@ import multer from "multer";
 import pdfParser from "pdf-parser";
 import axios from "axios";
 import NodeCache from "node-cache";
+import { fork } from "child_process";
+import path from "path";
 
 // Set up multer storage in memory
 const storage = multer.memoryStorage();
@@ -220,3 +222,41 @@ function extractLinks(text) {
     return { link, title, favicon }; // Return an object with link data
   });
 }
+
+const getNeededDetails = async () => {};
+
+export const searchJobsWithPuppeteer = async (req, res) => {
+  const { skill, location, experienceLevel } = req.body;
+
+  if (!skill || !location || !experienceLevel) {
+    return res
+      .status(400)
+      .json({ error: "Skill, location, and experience level are required." });
+  }
+
+  // Path to the child process script
+  const jobSearchScript = path.resolve("./scrap.mjs"); // Ensure this path is correct
+  console.log(
+    "Forking child process with arguments:",
+    skill,
+    location,
+    experienceLevel
+  );
+
+  const child = fork(jobSearchScript, [skill, location, experienceLevel]);
+
+  child.on("message", (jobResults) => {
+    res.status(200).json({ jobs: jobResults });
+  });
+
+  child.on("error", (error) => {
+    console.error("Error in child process:", error);
+    res.status(500).json({ error: "Failed to fetch job listings." });
+  });
+
+  child.on("exit", (code) => {
+    if (code !== 0) {
+      console.error(`Child process exited with code ${code}`);
+    }
+  });
+};
