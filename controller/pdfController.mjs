@@ -224,10 +224,10 @@ function extractLinks(text) {
 }
 
 const getNeededDetails = async () => {};
-
 export const searchJobsWithPuppeteer = async (req, res) => {
   const { skill, location, experienceLevel } = req.body;
 
+  // Validate input
   if (!skill || !location || !experienceLevel) {
     return res
       .status(400)
@@ -246,17 +246,26 @@ export const searchJobsWithPuppeteer = async (req, res) => {
   const child = fork(jobSearchScript, [skill, location, experienceLevel]);
 
   child.on("message", (jobResults) => {
-    res.status(200).json({ jobs: jobResults });
+    if (jobResults.status === "success") {
+      res.status(200).json({ jobs: jobResults.data });
+    } else {
+      res
+        .status(500)
+        .json({ error: jobResults.error || "Failed to fetch job listings." });
+    }
   });
 
   child.on("error", (error) => {
     console.error("Error in child process:", error);
-    res.status(500).json({ error: "Failed to fetch job listings." });
+    res.status(500).json({
+      error: "Failed to fetch job listings due to child process error.",
+    });
   });
 
   child.on("exit", (code) => {
     if (code !== 0) {
       console.error(`Child process exited with code ${code}`);
+      res.status(500).json({ error: "Child process exited with an error." });
     }
   });
 };
