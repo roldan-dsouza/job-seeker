@@ -3,13 +3,14 @@ import puppeteer from "puppeteer";
 // Function to search for job recommendations on Google and extract contact information
 export const searchAndScrapeJobDetails = async (skill, location) => {
   const response = { success: false, data: [], error: null };
+  let browser = null;
 
   try {
     console.log(
       `Searching for job recommendations for: ${skill} in ${location}`
     );
 
-    const browser = await puppeteer.launch({ headless: false });
+    browser = await puppeteer.launch({ headless: false });
     const page = await browser.newPage();
 
     const query = `${skill} jobs in ${location}`;
@@ -55,12 +56,14 @@ export const searchAndScrapeJobDetails = async (skill, location) => {
       return jobs;
     });
 
+    // Debug log the raw job details
+    console.log("Raw job details:", jobDetails);
+
     // Use a Set to avoid duplicate companies
     const uniqueJobDetails = Array.from(
       new Map(jobDetails.map((job) => [job.company, job])).values()
     );
 
-    // Debug log if jobDetails is empty
     if (uniqueJobDetails.length === 0) {
       response.error =
         "No job details found. Please check the page structure or selectors.";
@@ -69,7 +72,6 @@ export const searchAndScrapeJobDetails = async (skill, location) => {
       console.log("Unique job details found:", uniqueJobDetails);
     }
 
-    // Now search for each company on Google and scrape for contact details
     const resultsWithContactInfo = [];
     const visitedWebsites = new Set(); // To track visited websites
 
@@ -86,17 +88,16 @@ export const searchAndScrapeJobDetails = async (skill, location) => {
       });
 
       // Wait for search results to load and select the first website link
-      await page.waitForSelector("h3", { timeout: 30000 }); // Wait for the title of the search results
+      await page.waitForSelector("h3", { timeout: 30000 });
 
-      // Click the first link that usually corresponds to the company's official website
       const websiteLink = await page.evaluate(() => {
         const links = Array.from(document.querySelectorAll("h3"));
-        return links.length > 0 ? links[0].parentElement.href : null; // Get the first link's URL
+        return links.length > 0 ? links[0].parentElement.href : null;
       });
 
       if (websiteLink && !visitedWebsites.has(websiteLink)) {
         console.log(`Opening company website: ${websiteLink}`);
-        visitedWebsites.add(websiteLink); // Mark the website as visited
+        visitedWebsites.add(websiteLink);
 
         try {
           await page.goto(websiteLink, {
@@ -104,7 +105,6 @@ export const searchAndScrapeJobDetails = async (skill, location) => {
             timeout: 30000,
           });
 
-          // Scrape for contact details or email
           const contactDetails = await page.evaluate(() => {
             const emails = new Set(
               Array.from(
@@ -155,16 +155,20 @@ export const searchAndScrapeJobDetails = async (skill, location) => {
       }
     }
 
+    // Log the final results with contact information
+    console.log("Final results with contact info:", resultsWithContactInfo);
+
     response.success = true;
     response.data = resultsWithContactInfo;
-
     return response;
   } catch (error) {
     console.error("Error during job scraping:", error);
     response.error = "Failed to fetch job details.";
     return response;
   } finally {
-    await browser.close(); // Ensure the browser is closed in all scenarios
+    if (browser !== null) {
+      await browser.close(); // Ensure the browser is closed in all scenarios
+    }
   }
 };
 

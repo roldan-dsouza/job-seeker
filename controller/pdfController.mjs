@@ -246,6 +246,8 @@ export const searchJobsWithPuppeteer = async (req, res) => {
   const child = fork(jobSearchScript, [skill, location, experienceLevel]);
 
   child.on("message", (jobResults) => {
+    console.log("Received message from child process:", jobResults); // Debug log
+
     if (jobResults.status === "success") {
       res.status(200).json({ jobs: jobResults.data });
     } else {
