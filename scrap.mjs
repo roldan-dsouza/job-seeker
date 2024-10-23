@@ -162,6 +162,36 @@ export const searchAndScrapeJobDetails = async (
 
           // Start exploring the website for contact information
           const contactInfo = await exploreWebsite(page, new Set());
+
+          // If no emails found, perform a new search for the company's contact email
+          if (
+            contactInfo.emails.size === 0 ||
+            contactInfo.emails.has("Error retrieving emails")
+          ) {
+            const contactEmailSearchUrl = `https://www.google.com/search?q=${encodeURIComponent(
+              companyName + " contact email"
+            )}`;
+            await page.goto(contactEmailSearchUrl, {
+              waitUntil: "networkidle2",
+              timeout: 30000,
+            });
+            await page.waitForSelector("h3", { timeout: 30000 });
+
+            const contactEmailLink = await page.evaluate(() => {
+              const links = Array.from(document.querySelectorAll("h3"));
+              return links.length > 0 ? links[0].parentElement.href : null;
+            });
+
+            if (contactEmailLink) {
+              await page.goto(contactEmailLink, {
+                waitUntil: "networkidle2",
+                timeout: 30000,
+              });
+              const newContactInfo = await scrapeContactInfoFromPage(page);
+              contactInfo.emails = newContactInfo.emails;
+            }
+          }
+
           job.contactInfo = {
             emails:
               contactInfo.emails.size > 0
