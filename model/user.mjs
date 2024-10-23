@@ -20,4 +20,4 @@ const userschema = Schema({
   appliedJobs: { type: String, required: false },
 });
 
-const user = mongoose.model("user", userschema);
+export const user = mongoose.model("user", userschema);

@@ -9,7 +9,7 @@ import path from "path";
 const storage = multer.memoryStorage();
 export const upload = multer({ storage }).single("pdfFile");
 
-const cache = new NodeCache({ stdTTL: 60 }); // Cache for 1 minute
+const cache = new NodeCache({ stdTTL: 3600 }); // Cache for 1 minute
 
 // API Endpoint Constants
 const CLOUDFLARE_BASE_URL = `https://api.cloudflare.com/client/v4/accounts/${process.env.CLOUDFLARE_ACCOUNT_ID}/ai/run/`;
