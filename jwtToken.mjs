@@ -1,3 +1,4 @@
+import { body } from "express-validator";
 import jwt from "jsonwebtoken";
 
 export async function createAccessToken(user) {
@@ -40,7 +41,7 @@ export async function createRefreashToken(user) {
 /*Authorization: Bearer abc123def456ghi789
 refresh-token: xyz987lmn654opq321*/
 
-const verifyToken = async (req, res) => {
+const verifyToken = async (req, res, next) => {
   const authHeader = req.headers["authorization"];
   let accessToken, refreshToken;
 
@@ -68,4 +69,36 @@ const verifyToken = async (req, res) => {
   }
 
   console.log({ accessToken, refreshToken });
+
+  try {
+    if (!process.env.acessTokenKey) {
+      return res
+        .status(500)
+        .json({ error: "Internal server error, Missing accesTokenKey" });
+    }
+    const decoded = jwt.verify(accessToken, process.env.acessTokenKey);
+    req.user = decoded;
+    return next();
+  } catch (error) {
+    if (error.name == "TokenExpiredError") {
+      try {
+        if (!process.env.refreashTokenKey) {
+          return res.status(500).json({
+            "internal server error": "missing refreash token secret key",
+          });
+        }
+        const decode = jwt.verify(refreshToken, process.env.refreashTokenKey);
+        const newAccessToken = createAccessToken(decode);
+        res.status().cookie("accesToken:", newAccessToken);
+      } catch (error) {
+        if (error.name == "TokenExpiredError") {
+          res
+            .status()
+            .json({ "refreash token expired": "Redirect to the login page" });
+        }
+      }
+    } else {
+      res.status().json({ erro: error.message });
+    }
+  }
 };
