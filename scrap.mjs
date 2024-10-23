@@ -1,18 +1,87 @@
 import puppeteer from "puppeteer";
 
-// Function to search for job recommendations on Google and extract contact information
-export const searchAndScrapeJobDetails = async (skill, location) => {
+// Function to scrape emails and phone numbers from a page
+const scrapeContactInfoFromPage = async (page) => {
+  const contactInfo = {
+    emails: new Set(),
+    phones: new Set(),
+  };
+
+  const bodyText = await page.evaluate(() => document.body.innerText);
+
+  // Extract emails
+  const emails = bodyText.match(/[\w.%+-]+@[\w.-]+\.[a-zA-Z]{2,}/g);
+  if (emails) {
+    emails.forEach((email) => contactInfo.emails.add(email));
+  }
+
+  // Extract phone numbers
+  const phones = bodyText.match(/(\+?\d[\d -]{7,}\d)/g);
+  if (phones) {
+    phones.forEach((phone) => contactInfo.phones.add(phone));
+  }
+
+  return contactInfo;
+};
+
+// Recursive function to explore links within the website
+const exploreWebsite = async (page, visitedLinks, timeout = 60000) => {
+  const startTime = Date.now();
+
+  const links = await page.evaluate(() => {
+    const anchorElements = Array.from(document.querySelectorAll("a"));
+    return anchorElements
+      .map((a) => a.href)
+      .filter((href) => href && href.startsWith(window.location.origin));
+  });
+
+  for (const link of links) {
+    if (visitedLinks.has(link) || Date.now() - startTime > timeout) {
+      continue; // Skip visited links and check for timeout
+    }
+
+    visitedLinks.add(link);
+    await page.goto(link, { waitUntil: "networkidle2", timeout: 30000 });
+
+    // Check for contact info on this page
+    const contactInfo = await scrapeContactInfoFromPage(page);
+    if (contactInfo.emails.size > 0 || contactInfo.phones.size > 0) {
+      return contactInfo; // Found contact info, return it
+    }
+
+    // Recursive call to explore further
+    const nestedContactInfo = await exploreWebsite(page, visitedLinks, timeout);
+    if (
+      nestedContactInfo.emails.size > 0 ||
+      nestedContactInfo.phones.size > 0
+    ) {
+      return nestedContactInfo; // Return if found in deeper exploration
+    }
+
+    // Delay to avoid overwhelming the server
+    await new Promise((resolve) => setTimeout(resolve, 1000));
+  }
+
+  return contactInfo; // Return empty if nothing found
+};
+
+// Main function to search and scrape job details
+export const searchAndScrapeJobDetails = async (
+  skill,
+  location,
+  experienceLevel
+) => {
   const response = { success: false, data: [], error: null };
   let browser = null;
 
   try {
     console.log(
-      `Searching for job recommendations for: ${skill} in ${location}`
+      `Searching for job recommendations for: ${skill} in ${location} with ${experienceLevel} experience`
     );
     browser = await puppeteer.launch({ headless: false });
     const page = await browser.newPage();
 
-    const query = `${skill} jobs in ${location}`;
+    const query = `${skill} jobs in ${location} with ${experienceLevel} experience`;
     const googleJobsUrl = `https://www.google.com/search?q=${encodeURIComponent(
       query
     )}`;
@@ -21,19 +90,15 @@ export const searchAndScrapeJobDetails = async (skill, location) => {
       waitUntil: "networkidle2",
       timeout: 30000,
     });
-    // Click the button to view more jobs
     await page.waitForSelector(".jRKCUd .ZFiwCf", { timeout: 30000 });
     const element = await page.$(".jRKCUd .ZFiwCf");
     await element.click();
 
     await page.waitForNavigation({ waitUntil: "networkidle0", timeout: 30000 });
-    // Wait for the job elements to load
     await page.waitForSelector(".u9g6vf", { timeout: 30000 });
     const jobElements = await page.$$(".u9g6vf");
 
     const jobDetails = [];
-
-    // Click on each job button and extract details
     for (let jobButton of jobElements) {
       await jobButton.click();
       await new Promise((resolve) => setTimeout(resolve, 2000)); // Wait for the details to load
@@ -53,16 +118,13 @@ export const searchAndScrapeJobDetails = async (skill, location) => {
         jobDetails.push({ title: jobTitle, company: companyName });
       }
 
-      // Close the job detail dialog and go back to the job list
       await page.goBack();
       await new Promise((resolve) => setTimeout(resolve, 1000)); // Wait for the job list to load again
     }
 
-    // Remove duplicates based on company names
     const uniqueJobDetails = Array.from(
       new Map(jobDetails.map((job) => [job.company, job])).values()
     );
-
     const resultsWithContactInfo = [];
     const visitedWebsites = new Set();
 
@@ -94,35 +156,16 @@ export const searchAndScrapeJobDetails = async (skill, location) => {
             timeout: 30000,
           });
 
-          const contactDetails = await page.evaluate(() => {
-            const emails = new Set(
-              Array.from(
-                document.body.innerText.matchAll(
-                  /[\w.%+-]+@[\w.-]+\.[a-zA-Z]{2,}/g
-                )
-              ).map((match) => match[0])
-            );
-
-            const phones = new Set(
-              Array.from(
-                document.body.innerText.matchAll(/(\+?\d[\d -]{7,}\d)/g)
-              ).map((match) => match[0])
-            );
-
-            return {
-              emails: Array.from(emails),
-              phones: Array.from(phones),
-            };
-          });
-
+          // Start exploring the website for contact information
+          const contactInfo = await exploreWebsite(page, new Set());
           job.contactInfo = {
             emails:
-              contactDetails.emails.length > 0
-                ? contactDetails.emails.join(", ")
+              contactInfo.emails.size > 0
+                ? Array.from(contactInfo.emails).join(", ")
                 : "No email found",
             phones:
-              contactDetails.phones.length > 0
-                ? contactDetails.phones.join(", ")
+              contactInfo.phones.size > 0
+                ? Array.from(contactInfo.phones).join(", ")
                 : "No phone found",
           };
 
@@ -140,7 +183,6 @@ export const searchAndScrapeJobDetails = async (skill, location) => {
       }
     }
 
-    // If fewer than 10 jobs found, log the number found
     if (uniqueJobDetails.length < 10) {
       console.log(
         `Found ${uniqueJobDetails.length} jobs, less than the desired 10.`
@@ -167,9 +209,9 @@ export const searchAndScrapeJobDetails = async (skill, location) => {
 // Example usage if the script is executed directly
 if (import.meta.url === new URL(import.meta.url).href) {
   const args = process.argv.slice(2);
-  const [skill, location] = args;
+  const [skill, location, experienceLevel] = args;
 
-  searchAndScrapeJobDetails(skill, location)
+  searchAndScrapeJobDetails(skill, location, experienceLevel)
     .then((results) => {
       process.send({ status: "success", data: results });
       process.exit(0);
