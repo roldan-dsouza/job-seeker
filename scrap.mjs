@@ -9,14 +9,18 @@ const scrapeContactInfoFromPage = async (page) => {
 
   const bodyText = await page.evaluate(() => document.body.innerText);
 
-  // Extract emails
-  const emails = bodyText.match(/[\w.%+-]+@[\w.-]+\.[a-zA-Z]{2,}/g);
+  // Extract emails using a more comprehensive regex pattern
+  const emails = bodyText.match(
+    /[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/g
+  );
   if (emails) {
     emails.forEach((email) => contactInfo.emails.add(email));
   }
 
-  // Extract phone numbers
-  const phones = bodyText.match(/(\+?\d[\d -]{7,}\d)/g);
+  // Extract phone numbers using a flexible regex pattern
+  const phones = bodyText.match(
+    /(?:\+?\d{1,2}\s?)?(?:\(?\d{2,3}?\)?[\s-]?)?\d{3,4}[\s-]?\d{3,4}/g
+  );
   if (phones) {
     phones.forEach((phone) => contactInfo.phones.add(phone));
   }
@@ -97,8 +101,8 @@ export const searchAndScrapeJobDetails = async (
     await page.waitForNavigation({ waitUntil: "networkidle0", timeout: 30000 });
     await page.waitForSelector(".u9g6vf", { timeout: 30000 });
     const jobElements = await page.$$(".u9g6vf");
-
     const jobDetails = [];
+
     for (let jobButton of jobElements) {
       await jobButton.click();
       await new Promise((resolve) => setTimeout(resolve, 2000)); // Wait for the details to load
