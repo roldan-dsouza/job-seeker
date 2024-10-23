@@ -227,15 +227,13 @@ const getNeededDetails = async () => {};
 export const searchJobsWithPuppeteer = async (req, res) => {
   const { skill, location, experienceLevel } = req.body;
 
-  // Validate input
   if (!skill || !location || !experienceLevel) {
     return res
       .status(400)
       .json({ error: "Skill, location, and experience level are required." });
   }
 
-  // Path to the child process script
-  const jobSearchScript = path.resolve("./scrap.mjs"); // Ensure this path is correct
+  const jobSearchScript = path.resolve("./scrap.mjs");
   console.log(
     "Forking child process with arguments:",
     skill,
@@ -246,12 +244,12 @@ export const searchJobsWithPuppeteer = async (req, res) => {
   const child = fork(jobSearchScript, [skill, location, experienceLevel]);
 
   child.on("message", (jobResults) => {
-    console.log("Received message from child process:", jobResults); // Debug log
+    console.log("Job results from child process:", jobResults); // Debug log
 
     if (jobResults.status === "success") {
-      res.status(200).json({ jobs: jobResults.data });
+      return res.status(200).json({ jobs: jobResults.data });
     } else {
-      res
+      return res
         .status(500)
         .json({ error: jobResults.error || "Failed to fetch job listings." });
     }

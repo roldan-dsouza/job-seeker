@@ -9,7 +9,6 @@ export const searchAndScrapeJobDetails = async (skill, location) => {
     console.log(
       `Searching for job recommendations for: ${skill} in ${location}`
     );
-
     browser = await puppeteer.launch({ headless: false });
     const page = await browser.newPage();
 
@@ -22,58 +21,50 @@ export const searchAndScrapeJobDetails = async (skill, location) => {
       waitUntil: "networkidle2",
       timeout: 30000,
     });
+    // Click the button to view more jobs
+    await page.waitForSelector(".jRKCUd .ZFiwCf", { timeout: 30000 });
+    const element = await page.$(".jRKCUd .ZFiwCf");
+    await element.click();
 
-    // Wait for job elements to load
+    await page.waitForNavigation({ waitUntil: "networkidle0", timeout: 30000 });
+    // Wait for the job elements to load
     await page.waitForSelector(".u9g6vf", { timeout: 30000 });
-    console.log("Job elements found, starting to click on job titles...");
+    const jobElements = await page.$$(".u9g6vf");
 
-    // Extract job elements
-    const jobDetails = await page.evaluate(async () => {
-      const jobs = [];
-      const jobElements = Array.from(document.querySelectorAll(".u9g6vf")); // Selecting job elements
+    const jobDetails = [];
 
-      // Iterate over the first three job results (or less if there are fewer than 3)
-      for (let i = 0; i < Math.min(jobElements.length, 3); i++) {
-        const jobButton = jobElements[i];
-        jobButton.click();
+    // Click on each job button and extract details
+    for (let jobButton of jobElements) {
+      await jobButton.click();
+      await new Promise((resolve) => setTimeout(resolve, 2000)); // Wait for the details to load
 
-        // Wait for the job details to load
-        await new Promise((resolve) => setTimeout(resolve, 2000)); // Small delay for job to load
+      const titleElement = await page.$(".LZAQDf.cS4Vcb-pGL6qe-IRrXtf");
+      const companyElement = await page.$(".UxTHrf");
 
-        const titleElement = document.querySelector(
-          ".LZAQDf.cS4Vcb-pGL6qe-IRrXtf"
-        ); // Title class
-        const companyElement = document.querySelector(".UxTHrf"); // Company class
-
-        if (titleElement && companyElement) {
-          const jobTitle = titleElement.innerText;
-          const companyName = companyElement.innerText;
-
-          jobs.push({ title: jobTitle, company: companyName });
-        }
+      if (titleElement && companyElement) {
+        const jobTitle = await page.evaluate(
+          (el) => el.innerText,
+          titleElement
+        );
+        const companyName = await page.evaluate(
+          (el) => el.innerText,
+          companyElement
+        );
+        jobDetails.push({ title: jobTitle, company: companyName });
       }
 
-      return jobs;
-    });
+      // Close the job detail dialog and go back to the job list
+      await page.goBack();
+      await new Promise((resolve) => setTimeout(resolve, 1000)); // Wait for the job list to load again
+    }
 
-    // Debug log the raw job details
-    console.log("Raw job details:", jobDetails);
-
-    // Use a Set to avoid duplicate companies
+    // Remove duplicates based on company names
     const uniqueJobDetails = Array.from(
       new Map(jobDetails.map((job) => [job.company, job])).values()
     );
 
-    if (uniqueJobDetails.length === 0) {
-      response.error =
-        "No job details found. Please check the page structure or selectors.";
-      return response;
-    } else {
-      console.log("Unique job details found:", uniqueJobDetails);
-    }
-
     const resultsWithContactInfo = [];
-    const visitedWebsites = new Set(); // To track visited websites
+    const visitedWebsites = new Set();
 
     for (let job of uniqueJobDetails) {
       const companyName = job.company;
@@ -86,8 +77,6 @@ export const searchAndScrapeJobDetails = async (skill, location) => {
         waitUntil: "networkidle2",
         timeout: 30000,
       });
-
-      // Wait for search results to load and select the first website link
       await page.waitForSelector("h3", { timeout: 30000 });
 
       const websiteLink = await page.evaluate(() => {
@@ -146,20 +135,23 @@ export const searchAndScrapeJobDetails = async (skill, location) => {
             emails: "Error retrieving emails",
             phones: "Error retrieving phones",
           };
-          resultsWithContactInfo.push(job); // Still push the job with error details
+          resultsWithContactInfo.push(job);
         }
-      } else {
-        console.log(
-          `No website link found for company: ${companyName} or already visited. Skipping...`
-        );
       }
     }
 
-    // Log the final results with contact information
-    console.log("Final results with contact info:", resultsWithContactInfo);
+    // If fewer than 10 jobs found, log the number found
+    if (uniqueJobDetails.length < 10) {
+      console.log(
+        `Found ${uniqueJobDetails.length} jobs, less than the desired 10.`
+      );
+      response.success = true;
+      response.data = resultsWithContactInfo;
+      return response;
+    }
 
     response.success = true;
-    response.data = resultsWithContactInfo;
+    response.data = resultsWithContactInfo.slice(0, 10);
     return response;
   } catch (error) {
     console.error("Error during job scraping:", error);
@@ -167,7 +159,7 @@ export const searchAndScrapeJobDetails = async (skill, location) => {
     return response;
   } finally {
     if (browser !== null) {
-      await browser.close(); // Ensure the browser is closed in all scenarios
+      await browser.close();
     }
   }
 };
@@ -179,11 +171,11 @@ if (import.meta.url === new URL(import.meta.url).href) {
 
   searchAndScrapeJobDetails(skill, location)
     .then((results) => {
-      console.log("Job details:", results);
+      process.send({ status: "success", data: results });
       process.exit(0);
     })
     .catch((error) => {
-      console.error("Error in scraping:", error);
+      process.send({ status: "error", error: error.message });
       process.exit(1);
     });
 }
