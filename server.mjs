@@ -3,7 +3,6 @@ import mongoose from "mongoose";
 import { fileURLToPath } from "url";
 import path from "path";
 import "dotenv/config";
-import router from "./routes/index.mjs";
 import cookieParser from "cookie-parser";
 import indexRouter from "./routes/index.mjs";
 import cors from "cors";
@@ -17,6 +16,7 @@ app.use(cors());
 app.use(helmet());
 app.use(express.json());
 app.use("/api", indexRouter);
+app.use(express.static(path.join(__dirname, "./public")));
 
 if (process.env.DEVELOPMENT) {
   mongoose

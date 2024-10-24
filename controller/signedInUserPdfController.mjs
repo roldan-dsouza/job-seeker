@@ -1,17 +1,7 @@
-import multer from "multer";
 import pdfParser from "pdf-parser";
 import axios from "axios";
-import NodeCache from "node-cache";
-import { fork } from "child_process";
 import path from "path";
-import { realpathSync } from "fs";
-import { error } from "console";
-
-// Set up multer storage in memory
-const storage = multer.memoryStorage();
-export const upload = multer({ storage }).single("pdfFile");
-
-const cache = new NodeCache({ stdTTL: 3600 }); // Cache for 1 minute
+import User from "../model/user.mjs";
 
 // API Endpoint Constants
 const CLOUDFLARE_BASE_URL = `https://api.cloudflare.com/client/v4/accounts/${process.env.CLOUDFLARE_ACCOUNT_ID}/ai/run/`;
@@ -21,30 +11,26 @@ const AUTHORIZATION_HEADER = {
 };
 
 // Main function to handle PDF processing
-export const pdfFunction = async (buffer, ip) => {
-  // Check cache
-  const cachedData = cache.get(ip);
-  if (cachedData) {
-    return cachedData; // Return cached data if available
-  }
-
-  // Parse the PDF file
-  const pdfData = await parsePdf(buffer);
+export const pdfFunction = async (filePath) => {
+  // Parse the PDF file from the given path
+  const pdfData = await parsePdf(filePath);
   const formattedText = pdfData.text.replace(/\n\n/g, "\n");
-
-  // Store in cache
-  cache.set(ip, formattedText); // Cache the processed text
   return formattedText;
 };
 
 // Middleware for getting insights
 export const getInsights = async (req, res) => {
-  const ip = req.ip;
-  if (!req.file && !cache.get(ip)) {
-    return res.status(400).json({ error: "No file uploaded" });
-  }
+  const userId = req.user.id; // Assuming you're using some form of authentication
   try {
-    const formattedText = await pdfFunction(req.file.buffer, req.ip);
+    const user = await User.findById(userId).select("pdfAddress");
+
+    if (!user || !user.pdfAddress) {
+      return res
+        .status(404)
+        .json({ error: "No PDF address found for the user" });
+    }
+
+    const formattedText = await pdfFunction(user.pdfAddress);
     const insightsMessages = createInsightsMessages(formattedText);
     const insights = await fetchFromCloudflare(insightsMessages);
 
@@ -62,42 +48,23 @@ export const getInsights = async (req, res) => {
   }
 };
 
-// Middleware for getting job links
-export const getJobLinks = async (req, res) => {
-  if (!req.file && !cache.get(req.ip))
-    return res.status(400).json({ error: "no file uploaded" });
-  if (!req.body.location) {
-    return res.status(400).json({ error: "No location specified" });
-  }
-  try {
-    const formattedText = await pdfFunction(req.file.buffer, req.ip);
-    const jobMessages = createJobMessages(formattedText, req.body.location);
-    const jobs = await fetchJobLinks(jobMessages);
-
-    if (!jobs) {
-      return res.status(500).json({ error: "Failed to fetch job links" });
-    }
-
-    res.status(200).json({ availableJobs: extractLinks(jobs.result.response) });
-  } catch (error) {
-    console.error("Error fetching job links:", error);
-    res.status(500).json({
-      error: "Failed to fetch job links",
-      details: error.message,
-    });
-  }
-};
-``;
 // Middleware for getting salary ranges
 export const getSalaryRanges = async (req, res) => {
-  if (!req.file && !cache.get(req.ip)) {
-    return res.status(400).json({ error: "No file uploaded" });
-  }
+  const userId = req.user.id; // Assuming you're using some form of authentication
   if (!req.body.location) {
     return res.status(400).json({ error: "No location specified" });
   }
+
   try {
-    const formattedText = await pdfFunction(req.file.buffer, req.ip);
+    const user = await User.findById(userId).select("pdfAddress");
+
+    if (!user || !user.pdfAddress) {
+      return res
+        .status(404)
+        .json({ error: "No PDF address found for the user" });
+    }
+
+    const formattedText = await pdfFunction(user.pdfAddress);
     const salaryMessages = createSalaryMessages(
       formattedText,
       req.body.location
@@ -120,9 +87,9 @@ export const getSalaryRanges = async (req, res) => {
 };
 
 // Function to parse the PDF using pdf-parser
-async function parsePdf(buffer) {
+async function parsePdf(filePath) {
   return new Promise((resolve, reject) => {
-    pdfParser.pdf2json(buffer, (error, pdfData) => {
+    pdfParser.pdf2json(filePath, (error, pdfData) => {
       if (error) {
         return reject(error);
       }
@@ -134,8 +101,6 @@ async function parsePdf(buffer) {
   });
 }
 
-// ... [Rest of the functions remain unchanged]
-
 // Function to create messages for insights
 function createInsightsMessages(formattedText) {
   return [
@@ -146,20 +111,6 @@ function createInsightsMessages(formattedText) {
     {
       role: "user",
       content: formattedText,
-    },
-  ];
-}
-
-// Function to create messages for job links
-function createJobMessages(formattedText, location) {
-  return [
-    {
-      role: "system",
-      content: `Based on the provided text from a resume, generate a list of links to apply for jobs using the skills and locations from my resume. DO NOT respond with anything other than the list of posts, only the links. Also, do not give links where results are none, and if the desired location is in India, then search in naukri.com.`,
-    },
-    {
-      role: "user",
-      content: formattedText + ` job location preference ${location}`,
     },
   ];
 }
@@ -197,11 +148,6 @@ async function fetchFromCloudflare(messages) {
   }
 }
 
-// Function to fetch job links specifically
-async function fetchJobLinks(messages) {
-  return await fetchFromCloudflare(messages);
-}
-
 // Function to fetch salary ranges specifically
 async function fetchSalaryRanges(messages) {
   return await fetchFromCloudflare(messages);
@@ -223,57 +169,9 @@ function extractLinks(text) {
   return links.map((link) => {
     const domain = link.replace(/(^\w+:|^)\/\//, "").replace("www.", "");
     const parts = domain.split(".");
-    let title = parts.length > 2 ? parts[1] : parts[0]; // Get the domain title
-    title = title.charAt(0).toUpperCase() + title.slice(1); // Capitalize the title
-    const favicon = `https://www.google.com/s2/favicons?sz=64&domain_url=${link}`; // Favicon URL
+    let title = parts[0]; // Default title to the first part of the domain
+    const favicon = `https://www.google.com/s2/favicons?domain=${link}`;
 
-    return { link, title, favicon }; // Return an object with link data
+    return { link, title, favicon };
   });
 }
-
-const getNeededDetails = async () => {};
-export const searchJobsWithPuppeteer = async (req, res) => {
-  const { skill, location, experienceLevel } = req.body;
-
-  if (!skill || !location || !experienceLevel) {
-    return res
-      .status(400)
-      .json({ error: "Skill, location, and experience level are required." });
-  }
-
-  const jobSearchScript = path.resolve("./scrap.mjs");
-  console.log(
-    "Forking child process with arguments:",
-    skill,
-    location,
-    experienceLevel
-  );
-
-  const child = fork(jobSearchScript, [skill, location, experienceLevel]);
-
-  child.on("message", (jobResults) => {
-    console.log("Job results from child process:", jobResults); // Debug log
-
-    if (jobResults.status === "success") {
-      return res.status(200).json({ jobs: jobResults.data });
-    } else {
-      return res
-        .status(500)
-        .json({ error: jobResults.error || "Failed to fetch job listings." });
-    }
-  });
-
-  child.on("error", (error) => {
-    console.error("Error in child process:", error);
-    res.status(500).json({
-      error: "Failed to fetch job listings due to child process error.",
-    });
-  });
-
-  child.on("exit", (code) => {
-    if (code !== 0) {
-      console.error(`Child process exited with code ${code}`);
-      res.status(500).json({ error: "Child process exited with an error." });
-    }
-  });
-};
