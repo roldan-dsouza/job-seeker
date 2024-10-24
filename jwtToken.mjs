@@ -89,11 +89,9 @@ const verifyToken = async (req, res, next) => {
       try {
         // Check for refresh token key in environment variables
         if (!process.env.refreashTokenKey) {
-          return res
-            .status(500)
-            .json({
-              error: "Internal server error: Missing refresh token key",
-            });
+          return res.status(500).json({
+            error: "Internal server error: Missing refresh token key",
+          });
         }
 
         // Verify refresh token
