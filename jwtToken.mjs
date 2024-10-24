@@ -45,6 +45,7 @@ const verifyToken = async (req, res, next) => {
   const authHeader = req.headers["authorization"];
   let accessToken, refreshToken;
 
+  // Check for Authorization header
   if (authHeader) {
     const parts = authHeader.split(" ");
 
@@ -59,6 +60,7 @@ const verifyToken = async (req, res, next) => {
     return res.status(401).json({ error: "Authorization header missing" });
   }
 
+  // Check for Refresh Token header
   const refreshTokenHeader = req.headers["refresh-token"];
   if (refreshTokenHeader) {
     refreshToken = Array.isArray(refreshTokenHeader)
@@ -71,34 +73,49 @@ const verifyToken = async (req, res, next) => {
   console.log({ accessToken, refreshToken });
 
   try {
+    // Check for access token key in environment variables
     if (!process.env.acessTokenKey) {
       return res
         .status(500)
-        .json({ error: "Internal server error, Missing accesTokenKey" });
+        .json({ error: "Internal server error: Missing access token key" });
     }
+
+    // Verify access token
     const decoded = jwt.verify(accessToken, process.env.acessTokenKey);
     req.user = decoded;
     return next();
   } catch (error) {
-    if (error.name == "TokenExpiredError") {
+    if (error.name === "TokenExpiredError") {
       try {
+        // Check for refresh token key in environment variables
         if (!process.env.refreashTokenKey) {
-          return res.status(500).json({
-            "internal server error": "missing refreash token secret key",
-          });
+          return res
+            .status(500)
+            .json({
+              error: "Internal server error: Missing refresh token key",
+            });
         }
-        const decode = jwt.verify(refreshToken, process.env.refreashTokenKey);
-        const newAccessToken = createAccessToken(decode);
-        res.status().cookie("accesToken:", newAccessToken);
-      } catch (error) {
-        if (error.name == "TokenExpiredError") {
-          res
-            .status()
-            .json({ "refreash token expired": "Redirect to the login page" });
+
+        // Verify refresh token
+        const decodedRefresh = jwt.verify(
+          refreshToken,
+          process.env.refreashTokenKey
+        );
+        const newAccessToken = createAccessToken(decodedRefresh);
+
+        res.status(200).cookie("accesToken", newAccessToken); // Fixed the cookie setting
+        return next();
+      } catch (refreshError) {
+        if (refreshError.name === "TokenExpiredError") {
+          return res
+            .status(401)
+            .json({ error: "Refresh token expired, please log in again" });
+        } else {
+          return res.status(403).json({ error: "Invalid refresh token" });
         }
       }
     } else {
-      res.status().json({ erro: error.message });
+      return res.status(403).json({ error: error.message });
     }
   }
 };
