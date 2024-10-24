@@ -3,6 +3,8 @@ import { User } from "../model/user.mjs"; // Assuming your user model is correct
 import multer from "multer";
 import path from "path"; // Import path module
 import { fileURLToPath } from "url"; // Required for handling __dirname with ES modules
+import { createAccessToken, createRefreashToken } from "../jwtToken.mjs";
+import { createReadStream } from "fs";
 
 // To handle __dirname in ES modules
 const __filename = fileURLToPath(import.meta.url);
@@ -84,6 +86,7 @@ export const signup = async (req, res) => {
         email,
       });
 
+      const Hpassword = await hashPassword(password);
       // Create a new user instance
       const newUser = new User({
         userName: username,
@@ -91,11 +94,28 @@ export const signup = async (req, res) => {
         location,
         jobTitle,
         email,
-        password,
+        password: Hpassword,
       });
 
       // Save the new user to the database
-      await newUser.save();
+      let payload = await newUser.save();
+      payload = {
+        __id: payload.__id,
+        username: payload.userName,
+      };
+      const accessToken = await createAccessToken(payload);
+      const refreashToken = await createRefreashToken(payload);
+
+      res.cookie("access_token", accessToken, {
+        httpOnly: true,
+        maxAge: 15 * 60 * 1000 * 8,
+      });
+
+      res.cookie("refresh_token", refreshToken, {
+        httpOnly: true,
+        maxAge: 30 * 24 * 60 * 60 * 1000,
+      });
+
       return res.status(201).json({ message: "User registered successfully" });
     } catch (error) {
       // Handle validation errors
@@ -108,3 +128,10 @@ export const signup = async (req, res) => {
     }
   });
 };
+
+async function hashPassword(password) {
+  //hash password
+  const saltRounds = 10;
+  const hash = await bcrypt.hash(password, saltRounds);
+  return hash;
+}
