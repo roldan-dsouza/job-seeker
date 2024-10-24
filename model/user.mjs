@@ -2,7 +2,7 @@ import mongoose, { Schema } from "mongoose";
 
 const userschema = Schema({
   userName: { type: String, required: true },
-  pdfAddress: { type: URL, unique: true, required: true },
+  pdfAddress: { type: String, unique: true, required: true },
   location: { type: String, required: true },
   jobTitle: [{ type: String, required: true }],
   email: {
@@ -20,4 +20,4 @@ const userschema = Schema({
   appliedJobs: { type: String, required: false },
 });
 
-export const user = mongoose.model("user", userschema);
+export const User = mongoose.model("User", userschema);

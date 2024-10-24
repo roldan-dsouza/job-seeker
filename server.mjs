@@ -7,6 +7,7 @@ import cookieParser from "cookie-parser";
 import indexRouter from "./routes/index.mjs";
 import cors from "cors";
 import helmet from "helmet";
+import signedUserRouter from "./routes/signedInUser.mjs";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -15,8 +16,9 @@ const app = express();
 app.use(cors());
 app.use(helmet());
 app.use(express.json());
-app.use("/api", indexRouter);
 app.use(express.static(path.join(__dirname, "./public")));
+app.use("/api", indexRouter);
+app.use("/api/signed", signedUserRouter);
 
 if (process.env.DEVELOPMENT) {
   mongoose

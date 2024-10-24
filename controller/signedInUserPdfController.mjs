@@ -1,7 +1,6 @@
 import pdfParser from "pdf-parser";
 import axios from "axios";
-import path from "path";
-import User from "../model/user.mjs";
+import { User } from "../model/user.mjs";
 
 // API Endpoint Constants
 const CLOUDFLARE_BASE_URL = `https://api.cloudflare.com/client/v4/accounts/${process.env.CLOUDFLARE_ACCOUNT_ID}/ai/run/`;
