@@ -5,7 +5,7 @@ export async function createAccessToken(user) {
   const accessKey = process.env.acessTokenKey;
   try {
     const payload = {
-      userid: user.__id,
+      userid: user._id,
       username: user.username,
     };
 
@@ -13,7 +13,7 @@ export async function createAccessToken(user) {
       expiresIn: "5h",
     };
     const accessToken = jwt.sign(payload, accessKey, options);
-    console.log("Signed JWT:", token);
+    console.log("Signed access JWT");
     return accessToken;
   } catch (error) {
     console.error("Error signing token:", error.message);
