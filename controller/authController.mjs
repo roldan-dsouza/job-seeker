@@ -8,7 +8,7 @@ import bcrypt from "bcrypt";
 import fs from "fs";
 import mongoose from "mongoose";
 import NodeCache from "node-cache";
-import { sendOtp, verifyOtp } from "./otpController.mjs";
+import { sendOtp, verifyOtp } from "./otpControl.mjs";
 
 const cache = new NodeCache();
 
