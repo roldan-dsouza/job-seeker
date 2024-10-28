@@ -9,7 +9,21 @@ import { error } from "console";
 
 // Set up multer storage in memory
 const storage = multer.memoryStorage();
-export const upload = multer({ storage }).single("pdfFile");
+
+const fileFilter = (req, file, cb) => {
+  if (file.mimetype !== "application/pdf") {
+    return cb(
+      new Error("Invalid file format. Only PDF files are allowed!"),
+      false
+    );
+  }
+  cb(null, true);
+};
+
+export const upload = multer({
+  storage: storage,
+  fileFilter: fileFilter,
+}).single("pdfFile");
 
 const cache = new NodeCache({ stdTTL: 3600 }); // Cache for 1 minute
 
@@ -51,7 +65,8 @@ export const getInsights = async (req, res) => {
     if (!insights) {
       return res.status(500).json({ error: "Failed to fetch insights" });
     }
-
+    if (insights.result.response == "invalid resume")
+      return res.status(400).json({ error: "invalid resume" });
     res.status(200).json({ insights: insights.result.response });
   } catch (error) {
     console.error("Error fetching insights:", error);
@@ -141,7 +156,7 @@ function createInsightsMessages(formattedText) {
   return [
     {
       role: "system",
-      content: `You are a helpful bot helping me to get an overview of my resume. Keep the response limited to 60 words. Based on my resume, don't tell me about the things I have already mentioned, such as my education and internships. Create an overview with insights like salary range, job titles, pay scale, and rate of difficulty to get placed. Your response should sound human. Don't list out the insights specifically, but mend them within the response. Remember that the job should be localized based on the location specified in my resume. Your response is the last response in the conversation, and there are no more questions that should be asked.`,
+      content: `You are a helpful bot helping me to get an overview of my resume. Keep the response limited to 60 words. Based on my resume, don't tell me about the things I have already mentioned, such as my education and internships. Create an overview with insights like salary range, job titles, pay scale, and rate of difficulty to get placed. Your response should sound human. Don't list out the insights specifically, but mend them within the response. Remember that the job should be localized based on the location specified in my resume. Your response is the last response in the conversation, and there are no more questions that should be asked,and remember if it is not a valid resume just send "invalid resume" no other text other than this should be sent in that case`,
     },
     {
       role: "user",
