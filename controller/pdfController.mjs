@@ -11,9 +11,8 @@ import { error } from "console";
 const storage = multer.memoryStorage();
 
 export const validateFileType = (req, res, next) => {
-  const file = req.file;
-
-  if (file.mimetype !== "application/pdf") {
+  if (!req.file) return next();
+  if (req.file.mimetype !== "application/pdf") {
     return res
       .status(400)
       .json({ error: "Invalid file format. Only PDF files are allowed!" });
@@ -25,7 +24,7 @@ export const upload = multer({
   storage: storage,
 }).single("pdfFile");
 
-const cache = new NodeCache({ stdTTL: 3600 }); // Cache for 1 minute
+const cache = new NodeCache({ stdTTL: 3600 });
 
 // API Endpoint Constants
 const CLOUDFLARE_BASE_URL = `https://api.cloudflare.com/client/v4/accounts/${process.env.CLOUDFLARE_ACCOUNT_ID}/ai/run/`;
@@ -58,7 +57,9 @@ export const getInsights = async (req, res) => {
     return res.status(400).json({ error: "No file uploaded" });
   }
   try {
-    const formattedText = await pdfFunction(req.file.buffer, req.ip);
+    const formattedText = req.file
+      ? await pdfFunction(req.file.buffer, ip)
+      : cache.get(ip);
     const insightsMessages = createInsightsMessages(formattedText);
     const insights = await fetchFromCloudflare(insightsMessages);
 
@@ -112,7 +113,9 @@ export const getSalaryRanges = async (req, res) => {
     return res.status(400).json({ error: "No location specified" });
   }
   try {
-    const formattedText = await pdfFunction(req.file.buffer, req.ip);
+    const formattedText = req.file
+      ? await pdfFunction(req.file.buffer, ip)
+      : cache.get(ip);
     const salaryMessages = createSalaryMessages(
       formattedText,
       req.body.location
