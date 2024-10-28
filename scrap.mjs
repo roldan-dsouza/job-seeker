@@ -134,10 +134,11 @@ export const searchAndScrapeJobDetails = async (
 
     for (let job of uniqueJobDetails) {
       const companyName = job.company;
+      const query2 = companyName + "contact us page";
       console.log(`Searching for the company: ${companyName} on Google...`);
 
       const companySearchUrl = `https://www.google.com/search?q=${encodeURIComponent(
-        companyName
+        query2
       )}`;
       await page.goto(companySearchUrl, {
         waitUntil: "networkidle2",

@@ -106,6 +106,7 @@ export const getJobLinks = async (req, res) => {
 ``;
 // Middleware for getting salary ranges
 export const getSalaryRanges = async (req, res) => {
+  const ip = req.ip;
   if (!req.file && !cache.get(req.ip)) {
     return res.status(400).json({ error: "No file uploaded" });
   }
@@ -115,7 +116,7 @@ export const getSalaryRanges = async (req, res) => {
   try {
     const formattedText = req.file
       ? await pdfFunction(req.file.buffer, ip)
-      : cache.get(ip);
+      : cache.get(req.ip);
     const salaryMessages = createSalaryMessages(
       formattedText,
       req.body.location
@@ -249,49 +250,140 @@ function extractLinks(text) {
   });
 }
 
-const getNeededDetails = async () => {};
 export const searchJobsWithPuppeteer = async (req, res) => {
-  const { skill, location, experienceLevel } = req.body;
+  const { location, skills } = req.body; // Get location from request body
+  const ip = req.ip; // Get the user's IP address
 
-  if (!skill || !location || !experienceLevel) {
-    return res
-      .status(400)
-      .json({ error: "Skill, location, and experience level are required." });
+  if (!location) {
+    return res.status(400).json({ error: "Location is required." });
   }
 
-  const jobSearchScript = path.resolve("./scrap.mjs");
-  console.log(
-    "Forking child process with arguments:",
-    skill,
-    location,
-    experienceLevel
-  );
-
-  const child = fork(jobSearchScript, [skill, location, experienceLevel]);
-
-  child.on("message", (jobResults) => {
-    console.log("Job results from child process:", jobResults); // Debug log
-
-    if (jobResults.status === "success") {
-      return res.status(200).json({ jobs: jobResults.data });
+  try {
+    let formattedText;
+    if (req.file) {
+      // If a file is uploaded, extract data from it
+      formattedText = await pdfFunction(req.file.buffer, ip);
     } else {
+      // If no file is uploaded, check the cache
+      const cachedData = cache.get(ip);
+      if (!cachedData) {
+        return res
+          .status(400)
+          .json({ error: "No PDF uploaded and no cached data available." });
+      }
+      formattedText = cachedData;
+    }
+
+    // Fetch skill and experience level using the AI function
+    const { experienceLevel } = await fetchSkillAndExperienceFromPdf(
+      formattedText,
+      location
+    );
+    const skill = skills;
+    console.log("skills man:", skill, "exp level:", experienceLevel);
+    if (!skill || !experienceLevel) {
       return res
-        .status(500)
-        .json({ error: jobResults.error || "Failed to fetch job listings." });
+        .status(400)
+        .json({ error: "Failed to extract skill and experience level." });
     }
-  });
 
-  child.on("error", (error) => {
-    console.error("Error in child process:", error);
-    res.status(500).json({
-      error: "Failed to fetch job listings due to child process error.",
+    const jobSearchScript = path.resolve("./scrap.mjs");
+    console.log(
+      "Forking child process with arguments:",
+      skill,
+      location,
+      experienceLevel
+    );
+
+    const child = fork(jobSearchScript, [skill, location, experienceLevel]);
+
+    child.on("message", (jobResults) => {
+      console.log("Job results from child process:", jobResults); // Debug log
+
+      if (jobResults.status === "success") {
+        return res.status(200).json({ jobs: jobResults.data });
+      } else {
+        return res
+          .status(500)
+          .json({ error: jobResults.error || "Failed to fetch job listings." });
+      }
     });
-  });
 
-  child.on("exit", (code) => {
-    if (code !== 0) {
-      console.error(`Child process exited with code ${code}`);
-      res.status(500).json({ error: "Child process exited with an error." });
-    }
-  });
+    child.on("error", (error) => {
+      console.error("Error in child process:", error);
+      res.status(500).json({
+        error: "Failed to fetch job listings due to child process error.",
+      });
+    });
+
+    child.on("exit", (code) => {
+      if (code !== 0) {
+        console.error(`Child process exited with code ${code}`);
+        res.status(500).json({ error: "Child process exited with an error." });
+      }
+    });
+  } catch (error) {
+    console.error("Error in searchJobsWithPuppeteer:", error.message);
+    res.status(500).json({ error: "Internal Server Error" });
+  }
 };
+
+async function fetchSkillAndExperienceFromPdf(formattedText, location) {
+  const skillMessage = {
+    role: "system",
+    content:
+      "Extract skills and experience level from the following resume text and return them as JSON.",
+  };
+  const userMessage = {
+    role: "user",
+    content: `${formattedText} Job location preference: ${location}`,
+  };
+
+  try {
+    const response = await axios.post(
+      `${CLOUDFLARE_BASE_URL}${process.env.LLAMA_END_POINT}`,
+      { messages: [skillMessage, userMessage] },
+      { headers: AUTHORIZATION_HEADER }
+    );
+
+    // Log the raw response
+    console.log("Raw response from AI:", response.data);
+
+    // Extract the response text from the result
+    const responseText = response.data.result.response;
+
+    // Use a regular expression to extract the JSON from the response text
+    const jsonMatch = responseText.match(/```\n([\s\S]*?)\n```/);
+
+    if (jsonMatch && jsonMatch[1]) {
+      let jsonString = jsonMatch[1];
+
+      // Fix the experience level formatting
+      jsonString = jsonString.replace(
+        /"experience level": {\s*"(.*?)"\s*}/,
+        '"experience level": "$1"'
+      );
+
+      // Parse the JSON string to an object
+      const parsedData = JSON.parse(jsonString);
+
+      // Log the parsed data for debugging
+      console.log("Parsed data from AI response:", parsedData);
+
+      // Extract skills and experience level from parsed data
+      const skills = parsedData.skills;
+      const experienceLevel = parsedData["experience level"];
+
+      // Return formatted skills
+      return {
+        skills: skills,
+        experienceLevel: experienceLevel,
+      };
+    } else {
+      throw new Error("No valid JSON found in the response");
+    }
+  } catch (error) {
+    console.error("Error fetching skills and experience:", error.message);
+    throw new Error("Failed to fetch skills and experience from the AI model.");
+  }
+}
