@@ -1,6 +1,5 @@
 import nodemailer from "nodemailer";
 import crypto from "crypto";
-import { saveOtp, verifyotp } from "../model/otpModel.mjs";
 import dotenv from "dotenv";
 import axios from "axios";
 import NodeCache from "node-cache";
