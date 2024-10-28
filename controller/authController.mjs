@@ -12,7 +12,6 @@ import { sendOtp, verifyOtp } from "./otpController.mjs";
 
 const cache = new NodeCache();
 
-// To handle __dirname in ES modules
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
