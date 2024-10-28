@@ -13,12 +13,6 @@ const storage = multer.memoryStorage();
 export const validateFileType = (req, res, next) => {
   const file = req.file;
 
-  if (!file) {
-    return res
-      .status(400)
-      .json({ error: "No file uploaded. Please upload a PDF file." });
-  }
-
   if (file.mimetype !== "application/pdf") {
     return res
       .status(400)
