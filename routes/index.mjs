@@ -6,13 +6,14 @@ import {
   pdfFunction,
   searchJobsWithPuppeteer,
   upload,
+  validateFileType,
 } from "../controller/pdfController.mjs";
 
 const router = Router();
 
-router.post("/insights", upload, getInsights);
-router.post("/jobLinks", upload, getJobLinks);
-router.post("/salaryRange", upload, getSalaryRanges);
+router.post("/insights", upload, validateFileType, getInsights);
+router.post("/jobLinks", upload, validateFileType, getJobLinks);
+router.post("/salaryRange", upload, validateFileType, getSalaryRanges);
 router.post("/jobLinksScrap", searchJobsWithPuppeteer);
 
 export default router;

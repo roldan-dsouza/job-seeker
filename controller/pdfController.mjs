@@ -10,19 +10,25 @@ import { error } from "console";
 // Set up multer storage in memory
 const storage = multer.memoryStorage();
 
-const fileFilter = (req, file, cb) => {
-  if (file.mimetype !== "application/pdf") {
-    return cb(
-      new Error("Invalid file format. Only PDF files are allowed!"),
-      false
-    );
+export const validateFileType = (req, res, next) => {
+  const file = req.file;
+
+  if (!file) {
+    return res
+      .status(400)
+      .json({ error: "No file uploaded. Please upload a PDF file." });
   }
-  cb(null, true);
+
+  if (file.mimetype !== "application/pdf") {
+    return res
+      .status(400)
+      .json({ error: "Invalid file format. Only PDF files are allowed!" });
+  }
+  next();
 };
 
 export const upload = multer({
   storage: storage,
-  fileFilter: fileFilter,
 }).single("pdfFile");
 
 const cache = new NodeCache({ stdTTL: 3600 }); // Cache for 1 minute
