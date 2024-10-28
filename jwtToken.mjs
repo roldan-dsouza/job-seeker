@@ -20,7 +20,7 @@ export async function createAccessToken(user) {
   }
 }
 
-export async function createRefreashToken(user) {
+export async function createRefreshToken(user) {
   const refreashKey = process.env.refreashTokenKey;
   try {
     const payload = {

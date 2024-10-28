@@ -8,6 +8,7 @@ import indexRouter from "./routes/index.mjs";
 import cors from "cors";
 import helmet from "helmet";
 import signedUserRouter from "./routes/signedInUser.mjs";
+import bodyParser from "body-parser";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -22,6 +23,7 @@ if (process.env.NODE_ENV == "DEVELOPMENT") {
     });
 }
 
+//app.use(express.urlencoded({ extended: true }));
 app.use(cors());
 app.use(helmet());
 app.use(express.json());

@@ -1,13 +1,16 @@
 import Joi from "joi";
-import { User } from "../model/user.mjs"; // Assuming your user model is correctly exported
+import { User } from "../model/user.mjs";
 import multer from "multer";
-import path from "path"; // Import path module
-import { fileURLToPath } from "url"; // Required for handling __dirname with ES modules
-import { createAccessToken, createRefreashToken } from "../jwtToken.mjs";
-import { createReadStream } from "fs";
+import path from "path";
+import { fileURLToPath } from "url";
+import { createAccessToken, createRefreshToken } from "../jwtToken.mjs";
 import bcrypt from "bcrypt";
 import fs from "fs";
 import mongoose from "mongoose";
+import NodeCache from "node-cache";
+import { sendOtp, verifyOtp } from "./otpController.mjs";
+
+const cache = new NodeCache();
 
 // To handle __dirname in ES modules
 const __filename = fileURLToPath(import.meta.url);
@@ -22,7 +25,6 @@ const userSchema = Joi.object({
     "string.max": "Username must be at most {#limit} characters long",
     "any.required": "Username is required",
   }),
-
   email: Joi.string()
     .pattern(new RegExp("^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}$"))
     .required()
@@ -32,7 +34,6 @@ const userSchema = Joi.object({
       "string.pattern.base": "Email must be a valid email format",
       "any.required": "Email is required",
     }),
-
   password: Joi.string()
     .pattern(new RegExp("^[a-zA-Z0-9]{3,30}$"))
     .required()
@@ -42,18 +43,33 @@ const userSchema = Joi.object({
       "string.pattern.base": "Password must be 3 to 30 alphanumeric characters",
       "any.required": "Password is required",
     }),
-
   confirmPassword: Joi.string().valid(Joi.ref("password")).required().messages({
     "string.base": "Confirm Password must be a string",
     "any.only": "Confirm Password must match the Password",
     "any.required": "Confirm Password is required",
   }),
+  jobTitle: Joi.alternatives().try(
+    Joi.string().required().messages({
+      "string.base": "Job Title must be a string",
+      "string.empty": "Job Title cannot be empty",
+      "any.required": "Job Title is required",
+    }),
+    Joi.array().items(Joi.string()).required().messages({
+      "array.base": "Job Title must be an array of strings",
+      "any.required": "Job Title is required",
+    })
+  ),
+  location: Joi.string().required().messages({
+    "string.base": "Location must be a string",
+    "string.empty": "Location cannot be empty",
+    "any.required": "Location is required",
+  }),
 });
 
-// Set up Multer storage configuration
+// Set up Multer storage configuration with file filter to only allow PDFs
 const storage = multer.diskStorage({
   destination: (req, file, cb) => {
-    cb(null, path.join(__dirname, "../public"));
+    cb(null, path.join(__dirname, "../public/uploads"));
   },
   filename: (req, file, cb) => {
     const uniqueName = Date.now() + "-" + Math.round(Math.random() * 1e9);
@@ -62,124 +78,168 @@ const storage = multer.diskStorage({
   },
 });
 
-const upload = multer({ storage: storage }).single("pdfFile");
+const fileFilter = (req, file, cb) => {
+  if (file.mimetype !== "application/pdf") {
+    return cb(new Error("Only PDF files are allowed!"), false);
+  }
+  cb(null, true);
+};
 
-export const signup = async (req, res) => {
-  // Ensure DB is connected
+const upload = multer({
+  storage: storage,
+  fileFilter: fileFilter,
+  limits: { fileSize: 10 * 1024 * 1024 },
+}).single("pdfFile");
+
+export const initialSignup = async (req, res) => {
   if (mongoose.connection.readyState !== 1) {
     return res
       .status(500)
       .json({ error: "Database connection issue. Please try again later." });
   }
 
-  upload(req, res, async (err) => {
-    if (err) return res.status(500).json({ error: "Error uploading file" });
+  const { username, password, confirmPassword, email, jobTitle, location } =
+    req.body;
 
-    const { username, password, confirmPassword, email, location, jobTitle } =
-      req.body;
+  try {
+    await userSchema.validateAsync({
+      username,
+      password,
+      confirmPassword,
+      email,
+      jobTitle,
+      location,
+    });
 
-    try {
-      // Validate request data
-      await userSchema.validateAsync({
-        username,
-        password,
-        confirmPassword,
-        email,
-      });
-
-      // Hash the password
-      const Hpassword = await bcrypt.hash(password, 10);
-
-      // Define final upload path after validation succeeds
-      const uploadDir = path.join(__dirname, "../public/uploads");
-      if (!fs.existsSync(uploadDir))
-        fs.mkdirSync(uploadDir, { recursive: true });
-
-      const finalFilePath = path.join(uploadDir, req.file.filename);
-
-      // Move file only if validation passes
-      fs.rename(req.file.path, finalFilePath, (err) => {
-        if (err) {
-          console.error("File moving error:", err);
-          return res.status(500).json({ error: "Error moving the file" });
-        }
-      });
-
-      // Create new user instance
-      const newUser = new User({
-        userName: username,
-        pdfAddress: finalFilePath,
-        location,
-        jobTitle,
-        email,
-        password: Hpassword,
-      });
-
-      // Save new user to the database
-      let payload = await newUser.save();
-
-      payload = {
-        _id: payload._id,
-        username: payload.userName,
-      };
-
-      const accessToken = await createAccessToken(payload);
-      const refreshToken = await createRefreashToken(payload);
-
-      res.cookie("access_token", accessToken, {
-        httpOnly: true,
-        secure: process.env.NODE_ENV === "production",
-        maxAge: 15 * 60 * 1000 * 8,
-      });
-
-      res.cookie("refresh_token", refreshToken, {
-        httpOnly: true,
-        secure: process.env.NODE_ENV === "production",
-        maxAge: 30 * 24 * 60 * 60 * 1000,
-      });
-
-      return res.status(201).json({ message: "User registered successfully" });
-    } catch (error) {
-      // Delete the uploaded file if any error occurs
-      if (req.file && fs.existsSync(req.file.path)) {
-        fs.unlinkSync(req.file.path);
+    const existingUser = await User.findOne({ email });
+    if (existingUser) {
+      if (req.file) {
+        fs.unlink(req.file.path, (unlinkErr) => {
+          if (unlinkErr) console.error("Failed to delete file:", unlinkErr);
+        });
       }
-
-      if (error.isJoi) {
-        return res.status(400).json({ error: error.details[0].message });
-      }
-      return res.status(500).json({ error: error.message });
+      return res.status(409).json({ error: "Email already registered" });
     }
+
+    if (!req.file) {
+      return res.status(400).json({ error: "PDF file is required" });
+    }
+
+    cache.set(email, {
+      username,
+      password,
+      pdfAddress: path.join("uploads", req.file.filename),
+      jobTitle,
+      location,
+    });
+
+    const otpSent = await sendOtp(email);
+    if (!otpSent) {
+      fs.unlink(req.file.path, (unlinkErr) => {
+        if (unlinkErr) console.error("Failed to delete file:", unlinkErr);
+      });
+      return res.status(500).json({ error: "Failed to send OTP" });
+    }
+
+    return res
+      .status(200)
+      .json({ message: "OTP sent successfully, please verify." });
+  } catch (error) {
+    if (error.isJoi) {
+      return res.status(400).json({ error: error.details[0].message });
+    }
+
+    if (req.file) {
+      fs.unlink(req.file.path, (unlinkErr) => {
+        if (unlinkErr) console.error("Failed to delete file:", unlinkErr);
+      });
+    }
+
+    return res.status(500).json({ error: error.message });
+  }
+};
+
+export const finalSignup = async (req, res) => {
+  console.log(req.body);
+  const otpValid = await verifyOtp(email, otp);
+
+  const userData = cache.get(email);
+
+  if (!otpValid) {
+    if (userData && userData.pdfAddress) {
+      fs.unlink(
+        path.join(__dirname, "../public/", userData.pdfAddress),
+        (unlinkErr) => {
+          if (unlinkErr) console.error("Failed to delete file:", unlinkErr);
+        }
+      );
+    }
+    return res.status(400).json({ error: "Invalid or expired OTP" });
+  }
+
+  if (!userData) {
+    return res.status(400).json({ error: "User data not found or expired" });
+  }
+
+  const { username, pdfAddress } = userData;
+  const hashedPassword = await bcrypt.hash(userData.password, 10);
+
+  const newUser = new User({
+    userName: username,
+    pdfAddress: pdfAddress,
+    email: email,
+    password: hashedPassword,
+    jobTitle: userData.jobTitle,
+    location: userData.location,
   });
+
+  await newUser.save();
+
+  const payload = {
+    _id: newUser._id,
+    username: newUser.userName,
+  };
+
+  const accessToken = await createAccessToken(payload);
+  const refreshToken = await createRefreshToken(payload);
+
+  res.cookie("access_token", accessToken, {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === "production",
+    maxAge: 15 * 60 * 1000 * 8,
+  });
+
+  res.cookie("refresh_token", refreshToken, {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === "production",
+    maxAge: 30 * 24 * 60 * 60 * 1000,
+  });
+
+  return res.status(201).json({ message: "User registered successfully" });
 };
 
 export const login = async (req, res) => {
   const { email, password } = req.body;
 
   try {
-    // Check if the user exists with the provided email
     const user = await User.findOne({ email });
     if (!user) {
       return res.status(401).json({ error: "Invalid email or password" });
     }
 
-    // Compare provided password with hashed password in database
     const isPasswordValid = await bcrypt.compare(password, user.password);
     if (!isPasswordValid) {
       return res.status(401).json({ error: "Invalid email or password" });
     }
 
-    // Create payload for tokens
     const payload = {
       _id: user._id,
       username: user.userName,
     };
 
-    // Generate access and refresh tokens
     const accessToken = await createAccessToken(payload);
-    const refreshToken = await createRefreashToken(payload);
+    const refreshToken = await createRefreshToken(payload);
 
-    // Set tokens in cookies
     res.cookie("access_token", accessToken, {
       httpOnly: true,
       secure: process.env.NODE_ENV === "production",
@@ -198,9 +258,20 @@ export const login = async (req, res) => {
   }
 };
 
-async function hashPassword(password) {
-  //hash password
-  const saltRounds = 10;
-  const hash = await bcrypt.hash(password, saltRounds);
-  return hash;
-}
+export const uploadMiddleware = multer({
+  storage: multer.diskStorage({
+    destination: (req, file, cb) => {
+      cb(null, path.join(__dirname, "../public/uploads"));
+    },
+    filename: (req, file, cb) => {
+      const uniqueName = Date.now() + "-" + Math.round(Math.random() * 1e9);
+      cb(null, uniqueName + path.extname(file.originalname));
+    },
+  }),
+  fileFilter: (req, file, cb) => {
+    if (file.mimetype !== "application/pdf") {
+      return cb(new Error("Only PDF files are allowed!"), false);
+    }
+    cb(null, true);
+  },
+}).single("pdfFile");

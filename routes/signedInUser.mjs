@@ -3,12 +3,18 @@ import {
   getInsights,
   getSalaryRanges,
 } from "../controller/signedInUserPdfController.mjs";
-import { signup } from "../controller/authController.mjs";
+import {
+  finalSignup,
+  initialSignup,
+  uploadMiddleware,
+} from "../controller/authController.mjs";
 import { searchJobsWithPuppeteer } from "../controller/pdfController.mjs";
-
+import multer from "multer";
+import path from "path";
 const router = Router();
 
-router.post("/signUp", signup);
+router.post("/initialSignUp", uploadMiddleware, initialSignup);
+router.post("/finalSignUp", finalSignup);
 router.post("/insights", getInsights);
 router.post("/salaryRange", getSalaryRanges);
 router.post("/jobLinksScrap", searchJobsWithPuppeteer);
