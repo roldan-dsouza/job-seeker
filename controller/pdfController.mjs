@@ -275,7 +275,7 @@ export const searchJobsWithPuppeteer = async (req, res) => {
     }
 
     // Fetch skill and experience level using the AI function
-    const { experienceLevel } = await fetchSkillAndExperienceFromPdf(
+    const { experienceLevel } = await fetchExperienceLevelFromPdf(
       formattedText,
       location
     );
@@ -328,11 +328,11 @@ export const searchJobsWithPuppeteer = async (req, res) => {
   }
 };
 
-async function fetchSkillAndExperienceFromPdf(formattedText, location) {
+async function fetchExperienceLevelFromPdf(formattedText, location) {
   const skillMessage = {
     role: "system",
     content:
-      "Extract skills and experience level from the following resume text and return them as JSON.",
+      "Extract only the experience level from the following resume text and return it as either 'beginner,' 'intermediate,' or 'senior.' Return it as JSON in the format { 'experience level': '<level>' }.",
   };
   const userMessage = {
     role: "user",
@@ -356,34 +356,22 @@ async function fetchSkillAndExperienceFromPdf(formattedText, location) {
     const jsonMatch = responseText.match(/```\n([\s\S]*?)\n```/);
 
     if (jsonMatch && jsonMatch[1]) {
-      let jsonString = jsonMatch[1];
-
-      // Fix the experience level formatting
-      jsonString = jsonString.replace(
-        /"experience level": {\s*"(.*?)"\s*}/,
-        '"experience level": "$1"'
-      );
+      const jsonString = jsonMatch[1];
 
       // Parse the JSON string to an object
       const parsedData = JSON.parse(jsonString);
 
       // Log the parsed data for debugging
-      console.log("Parsed data from AI response:", parsedData);
+      console.log("Parsed experience level from AI response:", parsedData);
 
-      // Extract skills and experience level from parsed data
-      const skills = parsedData.skills;
+      // Extract and return the experience level
       const experienceLevel = parsedData["experience level"];
-
-      // Return formatted skills
-      return {
-        skills: skills,
-        experienceLevel: experienceLevel,
-      };
+      return { experienceLevel };
     } else {
       throw new Error("No valid JSON found in the response");
     }
   } catch (error) {
-    console.error("Error fetching skills and experience:", error.message);
-    throw new Error("Failed to fetch skills and experience from the AI model.");
+    console.error("Error fetching experience level:", error.message);
+    throw new Error("Failed to fetch experience level from the AI model.");
   }
 }
