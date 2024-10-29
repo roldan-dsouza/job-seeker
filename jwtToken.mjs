@@ -24,7 +24,7 @@ export async function createRefreshToken(user) {
   const refreashKey = process.env.refreashTokenKey;
   try {
     const payload = {
-      userid: user.__id,
+      userid: user._id,
       username: user.username,
     };
     const options = {

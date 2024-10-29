@@ -159,11 +159,11 @@ export const initialSignup = async (req, res) => {
 };
 
 export const finalSignup = async (req, res) => {
-  console.log(req.body);
-  const otpValid = await verifyOtp(email, otp);
-
+  const { email, otp } = req.body;
+  if (!email || !otp)
+    return res.status(400).json({ error: "missing fields email or otp" });
   const userData = cache.get(email);
-
+  const otpValid = await verifyOtp(email, otp);
   if (!otpValid) {
     if (userData && userData.pdfAddress) {
       fs.unlink(

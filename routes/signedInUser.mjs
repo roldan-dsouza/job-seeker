@@ -6,6 +6,7 @@ import {
 import {
   finalSignup,
   initialSignup,
+  login,
   uploadMiddleware,
 } from "../controller/authController.mjs";
 import { searchJobsWithPuppeteer } from "../controller/pdfController.mjs";
@@ -15,6 +16,7 @@ const router = Router();
 
 router.post("/initialSignUp", uploadMiddleware, initialSignup);
 router.post("/finalSignUp", finalSignup);
+router.get("/login",login)
 router.post("/insights", getInsights);
 router.post("/salaryRange", getSalaryRanges);
 router.post("/jobLinksScrap", searchJobsWithPuppeteer);
