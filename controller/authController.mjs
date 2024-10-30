@@ -127,7 +127,6 @@ export const initialSignup = async (req, res) => {
     cache.set(email, {
       username,
       password,
-      pdfAddress: path.join("uploads", req.file.filename),
       jobTitle,
       location,
     });
@@ -148,11 +147,11 @@ export const initialSignup = async (req, res) => {
       return res.status(400).json({ error: error.details[0].message });
     }
 
-    if (req.file) {
+    /*if (req.file) {
       fs.unlink(req.file.path, (unlinkErr) => {
         if (unlinkErr) console.error("Failed to delete file:", unlinkErr);
       });
-    }
+    }*/
 
     return res.status(500).json({ error: error.message });
   }
@@ -162,7 +161,9 @@ export const finalSignup = async (req, res) => {
   const { email, otp } = req.body;
   if (!email || !otp)
     return res.status(400).json({ error: "missing fields email or otp" });
-  const userData = cache.get(email);
+  const userData =
+    cache.get(email) + { pdfAddress: path.join("uploads", req.file.filename) };
+  console.log(userData);
   const otpValid = await verifyOtp(email, otp);
   if (!otpValid) {
     if (userData && userData.pdfAddress) {

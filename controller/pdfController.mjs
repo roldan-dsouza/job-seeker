@@ -258,81 +258,77 @@ export const searchJobsWithPuppeteer = async (req, res) => {
   if (!location) {
     return res.status(400).json({ error: "Location is required." });
   }
-  if (location == "onLocation") location = getCityFromIP(req.ip);
+  if (location == "onLocation") location = await getCityFromIP(req.ip);
   if (location == "hybrid")
-    location = getCityFromIP(req.ip) + " or any other location";
-    try {
-      let formattedText;
-      if (req.file) {
-        // If a file is uploaded, extract data from it
-        formattedText = await pdfFunction(req.file.buffer, ip);
-      } else {
-        // If no file is uploaded, check the cache
-        const cachedData = cache.get(ip);
-        if (!cachedData) {
-          return res
-            .status(400)
-            .json({ error: "No PDF uploaded and no cached data available." });
-        }
-        formattedText = cachedData;
-      }
-
-      // Fetch skill and experience level using the AI function
-      const { experienceLevel } = await fetchExperienceLevelFromPdf(
-        formattedText,
-        location
-      );
-
-      console.log("skills:", skill, "exp level:", experienceLevel);
-      if (!skill || !experienceLevel) {
+    location = (await getCityFromIP(req.ip)) + " or any other location";
+  try {
+    let formattedText;
+    if (req.file) {
+      // If a file is uploaded, extract data from it
+      formattedText = await pdfFunction(req.file.buffer, ip);
+    } else {
+      // If no file is uploaded, check the cache
+      const cachedData = cache.get(ip);
+      if (!cachedData) {
         return res
           .status(400)
-          .json({ error: "Failed to extract skill and experience level." });
+          .json({ error: "No PDF uploaded and no cached data available." });
       }
-
-      const jobSearchScript = path.resolve("./scrap.mjs");
-      console.log(
-        "Forking child process with arguments:",
-        skill,
-        location,
-        experienceLevel
-      );
-
-      const child = fork(jobSearchScript, [skill, location, experienceLevel]);
-
-      child.on("message", (jobResults) => {
-        console.log("Job results from child process:", jobResults); // Debug log
-
-        if (jobResults.status === "success") {
-          return res.status(200).json({ jobs: jobResults.data });
-        } else {
-          return res
-            .status(500)
-            .json({
-              error: jobResults.error || "Failed to fetch job listings.",
-            });
-        }
-      });
-
-      child.on("error", (error) => {
-        console.error("Error in child process:", error);
-        res.status(500).json({
-          error: "Failed to fetch job listings due to child process error.",
-        });
-      });
-
-      child.on("exit", (code) => {
-        if (code !== 0) {
-          console.error(`Child process exited with code ${code}`);
-          res
-            .status(500)
-            .json({ error: "Child process exited with an error." });
-        }
-      });
-    } catch (error) {
-      console.error("Error in searchJobsWithPuppeteer:", error.message);
-      res.status(500).json({ error: "Internal Server Error" });
+      formattedText = cachedData;
     }
+
+    // Fetch skill and experience level using the AI function
+    const { experienceLevel } = await fetchExperienceLevelFromPdf(
+      formattedText,
+      location
+    );
+
+    console.log("skills:", skill, "exp level:", experienceLevel);
+    if (!skill || !experienceLevel) {
+      return res
+        .status(400)
+        .json({ error: "Failed to extract skill and experience level." });
+    }
+
+    const jobSearchScript = path.resolve("./scrap.mjs");
+    console.log(
+      "Forking child process with arguments:",
+      skill,
+      location,
+      experienceLevel
+    );
+
+    const child = fork(jobSearchScript, [skill, location, experienceLevel]);
+
+    child.on("message", (jobResults) => {
+      console.log("Job results from child process:", jobResults); // Debug log
+
+      if (jobResults.status === "success") {
+        return res.status(200).json({ jobs: jobResults.data });
+      } else {
+        return res.status(500).json({
+          error: jobResults.error || "Failed to fetch job listings.",
+        });
+      }
+    });
+
+    child.on("error", (error) => {
+      console.error("Error in child process:", error);
+      res.status(500).json({
+        error: "Failed to fetch job listings due to child process error.",
+      });
+    });
+
+    child.on("exit", (code) => {
+      if (code !== 0) {
+        console.error(`Child process exited with code ${code}`);
+        res.status(500).json({ error: "Child process exited with an error." });
+      }
+    });
+  } catch (error) {
+    console.error("Error in searchJobsWithPuppeteer:", error.message);
+    res.status(500).json({ error: "Internal Server Error" });
+  }
 };
 
 async function fetchExperienceLevelFromPdf(formattedText, location) {
