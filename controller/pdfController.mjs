@@ -161,7 +161,7 @@ function createInsightsMessages(formattedText) {
   return [
     {
       role: "system",
-      content: `You are a helpful bot helping me to get an overview of my resume. Keep the response limited to 60 words. Based on my resume, don't tell me about the things I have already mentioned, such as my education and internships. Create an overview with insights like salary range, job titles, pay scale, and rate of difficulty to get placed. Your response should sound human. Don't list out the insights specifically, but mend them within the response. Remember that the job should be localized based on the location specified in my resume. Your response is the last response in the conversation, and there are no more questions that should be asked,and remember if it is not a valid resume just send "invalid resume" no other text other than this should be sent in that case`,
+      content: `You are a helpful bot helping me to get an overview of my resume. Keep the response limited to 100 words. Based on my resume, don't tell me about the things I have already mentioned, such as my education and internships. Create an overview with insights like salary range, job titles, pay scale, and rate of difficulty to get placed. Your response should sound human. Don't list out the insights specifically, but mend them within the response. Remember that the job should be localized based on the location specified in my resume. Your response is the last response in the conversation, and there are no more questions that should be asked,and remember if it is not a valid resume just send "invalid resume" no other text other than this should be sent in that case`,
     },
     {
       role: "user",

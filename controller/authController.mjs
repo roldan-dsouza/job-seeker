@@ -9,6 +9,8 @@ import fs from "fs";
 import mongoose from "mongoose";
 import NodeCache from "node-cache";
 import { sendOtp, verifyOtp } from "./otpControl.mjs";
+import { checkMissingFieldsInSignUp } from "../middleware/middleware.mjs";
+import { fetchNameLocationAndJobTitleFromPdf } from "../functions/userData.mjs";
 
 const cache = new NodeCache();
 
@@ -16,7 +18,8 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 // Define user schema for validation
-const userSchema = Joi.object({
+
+const userSchema2 = Joi.object({
   username: Joi.string().min(3).max(30).required().messages({
     "string.base": "Username must be a string",
     "string.empty": "Username cannot be empty",
@@ -24,6 +27,25 @@ const userSchema = Joi.object({
     "string.max": "Username must be at most {#limit} characters long",
     "any.required": "Username is required",
   }),
+  jobTitle: Joi.alternatives().try(
+    Joi.string().required().messages({
+      "string.base": "Job Title must be a string",
+      "string.empty": "Job Title cannot be empty",
+      "any.required": "Job Title is required",
+    }),
+    Joi.array().items(Joi.string()).required().messages({
+      "array.base": "Job Title must be an array of strings",
+      "any.required": "Job Title is required",
+    })
+  ),
+  location: Joi.string().required().messages({
+    "string.base": "Location must be a string",
+    "string.empty": "Location cannot be empty",
+    "any.required": "Location is required",
+  }),
+});
+
+const userSchema = Joi.object({
   email: Joi.string()
     .pattern(new RegExp("^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}$"))
     .required()
@@ -46,22 +68,6 @@ const userSchema = Joi.object({
     "string.base": "Confirm Password must be a string",
     "any.only": "Confirm Password must match the Password",
     "any.required": "Confirm Password is required",
-  }),
-  jobTitle: Joi.alternatives().try(
-    Joi.string().required().messages({
-      "string.base": "Job Title must be a string",
-      "string.empty": "Job Title cannot be empty",
-      "any.required": "Job Title is required",
-    }),
-    Joi.array().items(Joi.string()).required().messages({
-      "array.base": "Job Title must be an array of strings",
-      "any.required": "Job Title is required",
-    })
-  ),
-  location: Joi.string().required().messages({
-    "string.base": "Location must be a string",
-    "string.empty": "Location cannot be empty",
-    "any.required": "Location is required",
   }),
 });
 
@@ -96,49 +102,26 @@ export const initialSignup = async (req, res) => {
       .status(500)
       .json({ error: "Database connection issue. Please try again later." });
   }
-
-  const { username, password, confirmPassword, email, jobTitle, location } =
-    req.body;
-
+  const { password, confirmPassword, email } = req.body;
   try {
     await userSchema.validateAsync({
-      username,
       password,
       confirmPassword,
       email,
-      jobTitle,
-      location,
     });
 
     const existingUser = await User.findOne({ email });
     if (existingUser) {
-      if (req.file) {
-        fs.unlink(req.file.path, (unlinkErr) => {
-          if (unlinkErr) console.error("Failed to delete file:", unlinkErr);
-        });
-      }
       return res.status(409).json({ error: "Email already registered" });
     }
 
-    if (!req.file) {
-      return res.status(400).json({ error: "PDF file is required" });
-    }
-
-    cache.set(email, {
-      username,
-      password,
-      jobTitle,
-      location,
-    });
-
     const otpSent = await sendOtp(email);
     if (!otpSent) {
-      fs.unlink(req.file.path, (unlinkErr) => {
-        if (unlinkErr) console.error("Failed to delete file:", unlinkErr);
-      });
       return res.status(500).json({ error: "Failed to send OTP" });
     }
-
+    cache.set(email, {
+      password,
+    });
     return res
       .status(200)
       .json({ message: "OTP sent successfully, please verify." });
@@ -158,39 +141,52 @@ export const initialSignup = async (req, res) => {
 };
 
 export const finalSignup = async (req, res) => {
+  if (!req.file) {
+    return res.status(400).json({ error: "Resume file is required" });
+  }
+  const buffer = fs.readFileSync(req.file.path);
   const { email, otp } = req.body;
-  if (!email || !otp)
+  if (!email || !otp) {
+    if (req.file) {
+      fs.unlink(req.file.path, (unlinkErr) => {
+        if (unlinkErr) console.error("Failed to delete file:", unlinkErr);
+      });
+    }
     return res.status(400).json({ error: "missing fields email or otp" });
-  const userData =
-    cache.get(email) + { pdfAddress: path.join("uploads", req.file.filename) };
-  console.log(userData);
+  }
+
+  const userData = cache.get(email);
   const otpValid = await verifyOtp(email, otp);
   if (!otpValid) {
     if (userData && userData.pdfAddress) {
-      fs.unlink(
-        path.join(__dirname, "../public/", userData.pdfAddress),
-        (unlinkErr) => {
-          if (unlinkErr) console.error("Failed to delete file:", unlinkErr);
-        }
-      );
+      fs.unlink(req.file.path, (unlinkErr) => {
+        if (unlinkErr) console.error("Failed to delete file:", unlinkErr);
+      });
     }
     return res.status(400).json({ error: "Invalid or expired OTP" });
   }
 
   if (!userData) {
+    if (req.file) {
+      fs.unlink(req.file.path, (unlinkErr) => {
+        if (unlinkErr) console.error("Failed to delete file:", unlinkErr);
+      });
+    }
     return res.status(400).json({ error: "User data not found or expired" });
   }
-
-  const { username, pdfAddress } = userData;
+  const extractedData = await fetchNameLocationAndJobTitleFromPdf(
+    buffer,
+    req.ip
+  );
+  const pdfAddress = fs.readFileSync(req.file.path);
   const hashedPassword = await bcrypt.hash(userData.password, 10);
-
   const newUser = new User({
-    userName: username,
+    userName: extractedData.name,
     pdfAddress: pdfAddress,
     email: email,
     password: hashedPassword,
-    jobTitle: userData.jobTitle,
-    location: userData.location,
+    jobTitle: extractedData.jobTitle,
+    location: extractedData.location,
   });
 
   await newUser.save();

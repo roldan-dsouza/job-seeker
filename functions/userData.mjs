@@ -1,0 +1,88 @@
+import axios from "axios";
+import path from "path";
+import os from "os";
+import fs from "fs";
+import pdfParser from "pdf-parser";
+
+const CLOUDFLARE_BASE_URL = `https://api.cloudflare.com/client/v4/accounts/${process.env.CLOUDFLARE_ACCOUNT_ID}/ai/run/`;
+const AUTHORIZATION_HEADER = {
+  Authorization: `Bearer ${process.env.CLOUDFLARE_TOKEN}`,
+  "Content-Type": "application/json",
+};
+
+export async function fetchNameLocationAndJobTitleFromPdf(buffer, ip) {
+  console.log("Destination 1");
+  try {
+    const formattedText = await pdfFunction(buffer, ip);
+    const nameLocationTitleMessage = {
+      role: "system",
+      content:
+        "Extract only the person's name, city name, and job title from the following resume text. Return them in JSON format as { 'name': '<person's name>', 'location': '<city name>', 'job title': '<title>' }. jobTitle means the type of job I can apply to and only send 1 and be specific of the job name. Do not send anything other than the name, location, and job title in JSON format like NOTHING else",
+    };
+    const userMessage = {
+      role: "user",
+      content: `${formattedText}`,
+    };
+    const response = await axios.post(
+      `${CLOUDFLARE_BASE_URL}${process.env.LLAMA_END_POINT}`,
+      { messages: [nameLocationTitleMessage, userMessage] },
+      { headers: AUTHORIZATION_HEADER }
+    );
+
+    // Log the raw response for debugging
+    console.log("Raw response from AI:", response.data);
+
+    // Extract the response text from the result
+    const responseText = response.data.result.response;
+
+    // Clean the responseText to extract only the JSON part
+    const jsonResponseMatch = responseText.match(/{.*}/s);
+    if (!jsonResponseMatch) {
+      throw new Error("Failed to extract JSON from response");
+    }
+
+    // Parse the JSON response
+    const parsedData = JSON.parse(jsonResponseMatch[0]);
+
+    // Log the parsed data for debugging
+    console.log(
+      "Parsed name, location, and job title from AI response:",
+      parsedData
+    );
+
+    // Extract and return the name, location, and job title
+    const name = parsedData["name"];
+    const location = parsedData["location"];
+    const jobTitle = parsedData["job title"];
+    return { name, location, jobTitle };
+  } catch (error) {
+    console.error(
+      "Error fetching name, location, and job title:",
+      error.message
+    );
+    throw new Error(
+      "Failed to fetch name, location, and job title from the AI model."
+    );
+  }
+}
+
+const pdfFunction = async (buffer, ip) => {
+  // Parse the PDF file
+  const pdfData = await parsePdf(buffer);
+  const formattedText = pdfData.text.replace(/\n\n/g, "\n");
+  return formattedText;
+};
+
+async function parsePdf(buffer) {
+  return new Promise((resolve, reject) => {
+    pdfParser.pdf2json(buffer, (error, pdfData) => {
+      if (error) {
+        return reject(error);
+      }
+      const text = pdfData.pages
+        .map((page) => page.texts.map((text) => text.text).join(" "))
+        .join("\n");
+      resolve({ text });
+    });
+  });
+}
