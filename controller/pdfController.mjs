@@ -252,15 +252,9 @@ function extractLinks(text) {
 }
 
 export const searchJobsWithPuppeteer = async (req, res) => {
-  let { location, skill } = req.body; // Get location from request body
+  let { location } = req.body; // Get location from request body
   const ip = req.ip; // Get the user's IP address
 
-  if (!location) {
-    return res.status(400).json({ error: "Location is required." });
-  }
-  if (location == "onLocation") location = await getCityFromIP(req.ip);
-  if (location == "hybrid")
-    location = (await getCityFromIP(req.ip)) + " or any other location";
   try {
     let formattedText;
     if (req.file) {
@@ -278,12 +272,9 @@ export const searchJobsWithPuppeteer = async (req, res) => {
     }
 
     // Fetch skill and experience level using the AI function
-    const { experienceLevel } = await fetchExperienceLevelFromPdf(
-      formattedText,
-      location
-    );
-
-    console.log("skills:", skill, "exp level:", experienceLevel);
+    const result = await fetchJobDetailsFromPdf(formattedText);
+    if (location === "onlocation") location = result.location;
+    console.log(result);
     if (!skill || !experienceLevel) {
       return res
         .status(400)
@@ -331,15 +322,16 @@ export const searchJobsWithPuppeteer = async (req, res) => {
   }
 };
 
-async function fetchExperienceLevelFromPdf(formattedText, location) {
+async function fetchJobDetailsFromPdf(formattedText) {
   const skillMessage = {
     role: "system",
     content:
-      "Extract only the experience level from the following resume text and return it as either 'beginner,' 'intermediate,' or 'senior.' Return it as JSON in the format { 'experience level': '<level>' }.Do not send anything other than the experience level in json format like NOTHING else",
+      "Extract a single eligible job title, location (city), and experience level from the following resume text. Return the result as JSON in the format { 'jobTitle': '<title>', 'location': '<city>', 'experience level': '<level>' }. Do not send anything else.",
   };
+
   const userMessage = {
     role: "user",
-    content: `${formattedText} Job location preference: ${location}`,
+    content: formattedText,
   };
 
   try {
@@ -359,13 +351,17 @@ async function fetchExperienceLevelFromPdf(formattedText, location) {
     const parsedData = JSON.parse(responseText);
 
     // Log the parsed data for debugging
-    console.log("Parsed experience level from AI response:", parsedData);
+    console.log("Parsed job details from AI response:", parsedData);
 
-    // Extract and return the experience level
-    const experienceLevel = parsedData["experience level"];
-    return { experienceLevel };
+    // Extract and return the job details
+    const {
+      jobTitle,
+      location,
+      "experience level": experienceLevel,
+    } = parsedData;
+    return { jobTitle, location, experienceLevel };
   } catch (error) {
-    console.error("Error fetching experience level:", error.message);
-    throw new Error("Failed to fetch experience level from the AI model.");
+    console.error("Error fetching job details:", error.message);
+    throw new Error("Failed to fetch job details from the AI model.");
   }
 }
