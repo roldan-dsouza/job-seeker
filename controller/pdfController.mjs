@@ -7,7 +7,11 @@ import path from "path";
 import { realpathSync } from "fs";
 import { error } from "console";
 import { getCityFromIP } from "../functions/geolocation.mjs";
-import { fetchNameLocationAndJobTitleFromPdf } from "../functions/userData.mjs";
+import {
+  fetchNameLocationAndJobTitleFromPdf,
+  fetchSkillsExperienceLocationFromPdf,
+} from "../functions/userData.mjs";
+import { searchAndScrapeJobDetails } from "../functions/searchJobs.mjs";
 
 // Set up multer storage in memory
 const storage = multer.memoryStorage();
@@ -368,7 +372,12 @@ async function fetchJobDetailsFromPdf(formattedText) {
 }
 
 export const getAvailableJobs = async (req, res) => {
-  let location;
-  location = await fetchNameLocationAndJobTitleFromPdf(req.file.buffer, req.ip);
-  res.json(location);
+  const response = await fetchSkillsExperienceLocationFromPdf(
+    req.file.buffer,
+    req.ip
+  );
+  const { skills, location, experience } = response;
+  console.log("details i got are:", skills, location, experience);
+  const details = await searchAndScrapeJobDetails(skills, location, experience);
+  res.json(details);
 };
