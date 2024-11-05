@@ -7,6 +7,7 @@ import path from "path";
 import { realpathSync } from "fs";
 import { error } from "console";
 import { getCityFromIP } from "../functions/geolocation.mjs";
+import { fetchNameLocationAndJobTitleFromPdf } from "../functions/userData.mjs";
 
 // Set up multer storage in memory
 const storage = multer.memoryStorage();
@@ -365,3 +366,9 @@ async function fetchJobDetailsFromPdf(formattedText) {
     throw new Error("Failed to fetch job details from the AI model.");
   }
 }
+
+export const getAvailableJobs = async (req, res) => {
+  let location;
+  location = await fetchNameLocationAndJobTitleFromPdf(req.file.buffer, req.ip);
+  res.json(location);
+};
