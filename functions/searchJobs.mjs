@@ -9,7 +9,6 @@ export async function searchAndScrapeJobDetails(
   location,
   experienceLevel
 ) {
-  
   let response = { success: false, data: [], error: null };
   let browser = null;
 
