@@ -372,8 +372,12 @@ async function fetchJobDetailsFromPdf(formattedText) {
 }
 
 export const getAvailableJobs = async (req, res) => {
+  if (!req.file && !cache.get(ip)) {
+    return res.status(400).json({ error: "No file uploaded" });
+  }
+  const formattedText = pdfFunction(req.file.buffer, req.ip);
   const response = await fetchSkillsExperienceLocationFromPdf(
-    req.file.buffer,
+    formattedText,
     req.ip
   );
   const { skills, location, experience } = response;
