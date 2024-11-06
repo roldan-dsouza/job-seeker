@@ -87,14 +87,13 @@ async function parsePdf(buffer) {
   });
 }
 
-export async function fetchSkillsExperienceLocationFromPdf(buffer, ip) {
+export async function fetchSkillsExperienceLocationFromPdf(formattedText) {
   console.log("Destination 2");
   try {
-    const formattedText = await pdfFunction(buffer, ip);
     const skillExperienceLocationMessage = {
       role: "system",
       content:
-        "Extract only the primary skill, total years of experience (categorized as beginner, intermediate, or senior), and city location from the following resume text. Return them in JSON format as { 'skills': '<one primary skill>', 'experience': '<total years of experience categorized as beginner, intermediate, or senior>', 'location': '<city name>' }. Select only one skill that best represents the candidate's expertise and use it in singular form. Provide only these fields in JSON format, with no additional information.",
+        "Extract only the primary skill, total years of experience (categorized as beginner, intermediate, or senior), and city location from the following resume text. Return them in JSON format as { 'skills': '<one primary skill>', 'experience': '<beginner, intermediate, or senior>', 'location': '<city name>' }. Select only one skill that best represents the candidate's expertise and use it in singular form. Provide only these fields in JSON format, with no additional information.",
     };
     const userMessage = {
       role: "user",
@@ -105,9 +104,6 @@ export async function fetchSkillsExperienceLocationFromPdf(buffer, ip) {
       { messages: [skillExperienceLocationMessage, userMessage] },
       { headers: AUTHORIZATION_HEADER }
     );
-
-    // Log the raw response for debugging
-    console.log("Raw response from AI:", response.data);
 
     // Extract the response text from the result
     const responseText = response.data.result.response;
@@ -121,22 +117,13 @@ export async function fetchSkillsExperienceLocationFromPdf(buffer, ip) {
     // Parse the JSON response
     const parsedData = JSON.parse(jsonResponseMatch[0].replace(/'/g, '"'));
 
-    // Log the parsed data for debugging
-    console.log(
-      "Parsed skills, experience, and location from AI response:",
-      parsedData
-    );
-
     // Extract and return the skills, experience, and location
     const skills = parsedData["skills"];
     const experience = parsedData["experience"];
     const location = parsedData["location"];
     return { skills, experience, location };
   } catch (error) {
-    console.error(
-      "Error fetching skills, experience, and location:",
-      error.message
-    );
+    return "Error fetching skills, experience, and location:", error.message;
     throw new Error(
       "Failed to fetch skills, experience, and location from the AI model."
     );

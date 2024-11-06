@@ -372,16 +372,58 @@ async function fetchJobDetailsFromPdf(formattedText) {
 }
 
 export const getAvailableJobs = async (req, res) => {
-  if (!req.file && !cache.get(ip)) {
-    return res.status(400).json({ error: "No file uploaded" });
+  try {
+    const ip = req.ip;
+
+    if (!req.file && !cache.get(ip)) {
+      return res
+        .status(400)
+        .json({ error: "No file uploaded or data not found in cache." });
+    }
+
+    if (req.file && req.file.mimetype !== "application/pdf") {
+      return res
+        .status(415)
+        .json({ error: "Unsupported file type. Only PDF files are allowed." });
+    }
+
+    const formattedText = req.file
+      ? await pdfFunction(req.file.buffer, ip)
+      : cache.get(ip);
+
+    if (!formattedText) {
+      return res.status(500).json({ error: "Failed to process PDF content." });
+    }
+
+    const response = await fetchSkillsExperienceLocationFromPdf(formattedText);
+    const { skills, location, experience } = response;
+
+    if (!skills || !location || !experience) {
+      return res.status(422).json({
+        error:
+          "Required details (skills, location, experience) not found in PDF.",
+      });
+    }
+
+    console.log("Details extracted:", skills, location, experience);
+
+    const jobDetails = await searchAndScrapeJobDetails(
+      skills,
+      location,
+      experience
+    );
+
+    if (!jobDetails || jobDetails.length === 0) {
+      return res
+        .status(404)
+        .json({ message: "No job listings found based on provided details." });
+    }
+
+    res.status(200).json(jobDetails);
+  } catch (error) {
+    console.error("Error in getAvailableJobs:", error);
+    res
+      .status(500)
+      .json({ error: "An unexpected error occurred. Please try again later." });
   }
-  const formattedText = pdfFunction(req.file.buffer, req.ip);
-  const response = await fetchSkillsExperienceLocationFromPdf(
-    formattedText,
-    req.ip
-  );
-  const { skills, location, experience } = response;
-  console.log("details i got are:", skills, location, experience);
-  const details = await searchAndScrapeJobDetails(skills, location, experience);
-  res.json(details);
 };
