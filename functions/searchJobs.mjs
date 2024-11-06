@@ -12,15 +12,15 @@ export async function searchAndScrapeJobDetails(
       `Searching for job recommendations for: ${skill} in ${location} with ${experienceLevel} experience`
     );
     const browser = await puppeteer.launch({
-      executablePath: "/usr/bin/google-chrome-stable", // Path to Chrome on Render
+      headless: true,
       args: [
         "--no-sandbox",
         "--disable-setuid-sandbox",
         "--disable-gpu",
+        "--disable-dev-shm-usage",
         "--no-first-run",
         "--no-zygote",
         "--single-process",
-        "--disable-dev-shm-usage",
       ],
     });
     const page = await browser.newPage();
