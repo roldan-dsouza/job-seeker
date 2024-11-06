@@ -5,7 +5,7 @@ export async function searchAndScrapeJobDetails(
   location,
   experienceLevel
 ) {
-  const response = { success: false, data: [], error: null };
+  let response = { success: false, data: [], error: null };
 
   try {
     console.log(
