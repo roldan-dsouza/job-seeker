@@ -12,7 +12,7 @@ export async function searchAndScrapeJobDetails(
       `Searching for job recommendations for: ${skill} in ${location} with ${experienceLevel} experience`
     );
     const browser = await puppeteer.launch({
-      headless: true,
+      headless: false,
       args: [
         "--disable-setuid-sandbox",
         "--no-sandbox",
