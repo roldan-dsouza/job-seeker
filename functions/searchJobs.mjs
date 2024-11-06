@@ -13,12 +13,13 @@ export async function searchAndScrapeJobDetails(
     );
     const browser = await puppeteer.launch({
       headless: true,
+      executablePath:
+        process.env.NODE_ENV === "production"
+          ? process.env.puppeteer_executable_path
+          : puppeteer.executablePath(),
       args: [
-        "--no-sandbox",
         "--disable-setuid-sandbox",
-        "--disable-gpu",
-        "--disable-dev-shm-usage",
-        "--no-first-run",
+        "--no-sandbox",
         "--no-zygote",
         "--single-process",
       ],
