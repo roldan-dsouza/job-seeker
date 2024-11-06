@@ -13,10 +13,6 @@ export async function searchAndScrapeJobDetails(
     );
     const browser = await puppeteer.launch({
       headless: true,
-      executablePath:
-        process.env.NODE_ENV === "production"
-          ? process.env.puppeteer_executable_path
-          : puppeteer.executablePath(),
       args: [
         "--disable-setuid-sandbox",
         "--no-sandbox",
