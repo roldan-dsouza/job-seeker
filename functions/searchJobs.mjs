@@ -6,13 +6,23 @@ export async function searchAndScrapeJobDetails(
   experienceLevel
 ) {
   const response = { success: false, data: [], error: null };
-  let browser = null;
 
   try {
     console.log(
       `Searching for job recommendations for: ${skill} in ${location} with ${experienceLevel} experience`
     );
-    browser = await puppeteer.launch({ headless: false });
+    const browser = await puppeteer.launch({
+      executablePath: "/usr/bin/google-chrome-stable", // Path to Chrome on Render
+      args: [
+        "--no-sandbox",
+        "--disable-setuid-sandbox",
+        "--disable-gpu",
+        "--no-first-run",
+        "--no-zygote",
+        "--single-process",
+        "--disable-dev-shm-usage",
+      ],
+    });
     const page = await browser.newPage();
 
     const query = `${skill} jobs in ${location} with ${experienceLevel} experience`;
