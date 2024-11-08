@@ -192,7 +192,22 @@ function createSalaryMessages(formattedText, location) {
   return [
     {
       role: "system",
-      content: `Generate a list of jobs along with their corresponding salary ranges (minimum and maximum) per annum based on the provided resume text. Ensure that the salary ranges are relevant to the skills and experience mentioned in the resume. Provide the full annual salary amounts as numbers (e.g., 700000, not 7-8 lakhs), and base the currency code on the job location (e.g., 'INR' for India, 'USD' for the United States). The JSON format must strictly follow this structure: [{ "job": "Job Title", "salary":{ "min": <full number without currency>, "max": <full number without currency> }, "currency": "<currency code based on location>"}, ...]. Do not include anything else in the response other than this JSON format.`,
+      content: `Generate a list of jobs along with their corresponding salary ranges (minimum and maximum) per annum based on the provided resume text. Ensure that the salary ranges are relevant to the skills and experience mentioned in the resume. Provide the full annual salary amounts as numbers (e.g., 700000, not 7-8 lakhs), and base the currency code on the job location (e.g., 'INR' for India, 'USD' for the United States). 
+
+      The response must strictly follow this JSON format and include nothing else: 
+      [
+        { 
+          "job": "Job Title", 
+          "salary": { 
+            "min": <full number without currency>, 
+            "max": <full number without currency> 
+          }, 
+          "currency": "<currency code based on location>"
+        }, 
+        ...
+      ]
+      
+      Do not include any additional explanations, introductory text, or messages. The output should only be in the JSON format above with no extra text.`,
     },
     {
       role: "user",
