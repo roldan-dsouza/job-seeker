@@ -116,16 +116,14 @@ export const getSalaryRanges = async (req, res) => {
   if (!req.file && !cache.get(req.ip)) {
     return res.status(400).json({ error: "No file uploaded" });
   }
-  if (!req.body.location) {
-    return res.status(400).json({ error: "No location specified" });
-  }
   try {
     const formattedText = req.file
       ? await pdfFunction(req.file.buffer, ip)
       : cache.get(req.ip);
+    const location = await fetchSkillsExperienceLocationFromPdf(formattedText);
     const salaryMessages = createSalaryMessages(
       formattedText,
-      req.body.location
+      location.location
     );
     const salaryRanges = await fetchSalaryRanges(salaryMessages);
 
@@ -194,7 +192,7 @@ function createSalaryMessages(formattedText, location) {
   return [
     {
       role: "system",
-      content: `Generate a list of jobs along with their corresponding salary ranges based on the provided resume text. Ensure that the salary ranges are relevant to the skills and experience mentioned in the resume. The response should include job titles and salary ranges in a professional manner. The JSON format must strictly follow this structure: [{ "job": "Job Title", "salary": "Salary Range" }, ...]. Do not include anything else in the response other than this JSON format.`,
+      content: `Generate a list of jobs along with their corresponding salary ranges minimum and maximum salary based on the provided resume text. Ensure that the salary ranges are per anum and relevant to the skills and experience mentioned in the resume. The response should include job titles and salary ranges in a professional manner. The JSON format must strictly follow this structure: [{ "job": "Job Title", "salary":{ "min: (dont include currency),  max:"  (dont inclue currency)}}, ...]. Do not include anything else in the response other than this JSON format.`,
     },
     {
       role: "user",

@@ -9,6 +9,8 @@ import cors from "cors";
 import helmet from "helmet";
 import signedUserRouter from "./routes/signedInUser.mjs";
 import bodyParser from "body-parser";
+import StealthPlugin from "puppeteer-extra-plugin-stealth";
+import puppeteerExtra from "puppeteer-extra";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -31,6 +33,7 @@ app.use(cookieParser());
 app.use(express.static(path.join(__dirname, "./public")));
 app.use("/api", indexRouter);
 app.use("/api/signed", signedUserRouter);
+puppeteerExtra.use(StealthPlugin());
 
 app.listen(process.env.PORT, () => {
   console.log(`listening on port ${process.env.PORT}`);
