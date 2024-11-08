@@ -390,13 +390,11 @@ export const getAvailableJobs = async (req, res) => {
         .json({ error: "Location is required in the request body" });
     }
     const validLocations = ["onlocation", "remote", "hybrid"];
-    if (!validLocations.includes(location)) {
-      return res
-        .status(422)
-        .json({
-          error:
-            "Invalid location. Accepted values are 'onlocation', 'remote', or 'hybrid'.",
-        });
+    if (!validLocations.includes(req.body.location)) {
+      return res.status(422).json({
+        error:
+          "Invalid location. Accepted values are 'onlocation', 'remote', or 'hybrid'.",
+      });
     }
     const formattedText = req.file
       ? await pdfFunction(req.file.buffer, ip)
