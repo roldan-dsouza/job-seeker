@@ -384,7 +384,20 @@ export const getAvailableJobs = async (req, res) => {
         .status(415)
         .json({ error: "Unsupported file type. Only PDF files are allowed." });
     }
-
+    if (!req.body.location) {
+      return res
+        .status(400)
+        .json({ error: "Location is required in the request body" });
+    }
+    const validLocations = ["onlocation", "remote", "hybrid"];
+    if (!validLocations.includes(location)) {
+      return res
+        .status(422)
+        .json({
+          error:
+            "Invalid location. Accepted values are 'onlocation', 'remote', or 'hybrid'.",
+        });
+    }
     const formattedText = req.file
       ? await pdfFunction(req.file.buffer, ip)
       : cache.get(ip);
@@ -405,6 +418,7 @@ export const getAvailableJobs = async (req, res) => {
     }
 
     console.log("Details extracted:", skills, location, experience);
+
     if (req.body.location == "remote") {
       location = "remote";
     }
