@@ -409,7 +409,7 @@ export const getAvailableJobs = async (req, res) => {
       location = "remote";
     }
     if (req.body.location == "hybrid") {
-      location = location + "or remote";
+      location = location + " or remote";
     }
     console.log(location);
     const jobDetails = await searchAndScrapeJobDetails(
