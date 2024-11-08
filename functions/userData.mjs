@@ -94,7 +94,7 @@ export async function fetchSkillsExperienceLocationFromPdf(formattedText) {
     const skillExperienceLocationMessage = {
       role: "system",
       content:
-        "Extract only the primary skill, total years of experience (categorized as beginner, intermediate, or senior), and city location from the following resume text. Return them in JSON format as { 'skills': '<one primary skill>', 'experience': '<beginner, intermediate, or senior>', 'location': '<city name>' }. Select only one skill that best represents the candidate's expertise and use it in singular form. Provide only these fields in JSON format, with no additional information.",
+        "Extract only the primary skill, total years of experience (categorized as beginner, intermediate, or senior), and city location from the following resume text. Return them in JSON format as { 'skills': '<one primary skill do not say a framework but general name of job>', 'experience': '<beginner, intermediate, or senior>', 'location': '<city name>' }. Select only one skill that best represents the candidate's expertise and use it in singular form. Provide only these fields in JSON format, with no additional information.",
     };
     const userMessage = {
       role: "user",
