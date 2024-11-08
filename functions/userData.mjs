@@ -3,6 +3,7 @@ import path from "path";
 import os from "os";
 import fs from "fs";
 import pdfParser from "pdf-parser";
+import { getAvailableJobs, getJobLinks } from "../controller/pdfController.mjs";
 
 const CLOUDFLARE_BASE_URL = `https://api.cloudflare.com/client/v4/accounts/${process.env.CLOUDFLARE_ACCOUNT_ID}/ai/run/`;
 const AUTHORIZATION_HEADER = {
@@ -123,7 +124,7 @@ export async function fetchSkillsExperienceLocationFromPdf(formattedText) {
     const location = parsedData["location"];
     return { skills, experience, location };
   } catch (error) {
-    return "Error fetching skills, experience, and location:", error.message;
+    return await fetchSkillsExperienceLocationFromPdf(formattedText);
     throw new Error(
       "Failed to fetch skills, experience, and location from the AI model."
     );

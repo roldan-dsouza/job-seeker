@@ -397,6 +397,7 @@ export const getAvailableJobs = async (req, res) => {
     const { skills, location, experience } = response;
 
     if (!skills || !location || !experience) {
+      console.log(response)
       return res.status(422).json({
         error:
           "Required details (skills, location, experience) not found in PDF.",
