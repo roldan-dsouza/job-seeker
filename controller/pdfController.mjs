@@ -394,10 +394,10 @@ export const getAvailableJobs = async (req, res) => {
     }
 
     const response = await fetchSkillsExperienceLocationFromPdf(formattedText);
-    const { skills, location, experience } = response;
+    let { skills, location, experience } = response;
 
     if (!skills || !location || !experience) {
-      console.log(response)
+      console.log(response);
       return res.status(422).json({
         error:
           "Required details (skills, location, experience) not found in PDF.",
@@ -405,7 +405,13 @@ export const getAvailableJobs = async (req, res) => {
     }
 
     console.log("Details extracted:", skills, location, experience);
-
+    if (req.body.location == "remote") {
+      location = "remote";
+    }
+    if (req.body.location == "hybrid") {
+      location = location + "or remote";
+    }
+    console.log(location);
     const jobDetails = await searchAndScrapeJobDetails(
       skills,
       location,
