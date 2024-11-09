@@ -1,7 +1,7 @@
 import mongoose, { Schema } from "mongoose";
 
 const userschema = Schema({
-  userName: { type: String, required: true },
+  userName: { type: String, required: false },
   pdfAddress: { type: String, unique: true, required: false },
   location: { type: String, required: false },
   jobTitle: [{ type: String, required: false }],

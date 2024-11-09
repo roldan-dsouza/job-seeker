@@ -6,7 +6,7 @@ export async function createAccessToken(user) {
   try {
     const payload = {
       userid: user._id,
-      username: user.username,
+      email: user.email,
     };
 
     const options = {
@@ -25,7 +25,7 @@ export async function createRefreshToken(user) {
   try {
     const payload = {
       userid: user._id,
-      username: user.username,
+      email: user.email,
     };
     const options = {
       expiresIn: "1d",

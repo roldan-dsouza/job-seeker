@@ -102,6 +102,7 @@ export const initialSignup = async (req, res) => {
       .status(500)
       .json({ error: "Database connection issue. Please try again later." });
   }
+  console.log(req.body);
   const { password, confirmPassword, email } = req.body;
   try {
     await userSchema.validateAsync({
@@ -162,7 +163,7 @@ export const finalSignup = async (req, res) => {
 
   const payload = {
     _id: newUser._id,
-    username: newUser.userName,
+    email: newUser.email,
   };
 
   const accessToken = await createAccessToken(payload);
