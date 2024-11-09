@@ -2,9 +2,9 @@ import mongoose, { Schema } from "mongoose";
 
 const userschema = Schema({
   userName: { type: String, required: true },
-  pdfAddress: { type: String, unique: true, required: true },
-  location: { type: String, required: true },
-  jobTitle: [{ type: String, required: true }],
+  pdfAddress: { type: String, unique: true, required: false },
+  location: { type: String, required: false },
+  jobTitle: [{ type: String, required: false }],
   email: {
     type: String,
     required: true,

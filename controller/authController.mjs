@@ -129,64 +129,33 @@ export const initialSignup = async (req, res) => {
     if (error.isJoi) {
       return res.status(400).json({ error: error.details[0].message });
     }
-
-    /*if (req.file) {
-      fs.unlink(req.file.path, (unlinkErr) => {
-        if (unlinkErr) console.error("Failed to delete file:", unlinkErr);
-      });
-    }*/
-
     return res.status(500).json({ error: error.message });
   }
 };
 
 export const finalSignup = async (req, res) => {
-  if (!req.file) {
-    return res.status(400).json({ error: "Resume file is required" });
-  }
-  const buffer = fs.readFileSync(req.file.path);
   const { email, otp } = req.body;
+
   if (!email || !otp) {
-    if (req.file) {
-      fs.unlink(req.file.path, (unlinkErr) => {
-        if (unlinkErr) console.error("Failed to delete file:", unlinkErr);
-      });
-    }
     return res.status(400).json({ error: "missing fields email or otp" });
   }
 
   const userData = cache.get(email);
   const otpValid = await verifyOtp(email, otp);
+
   if (!otpValid) {
-    if (userData && userData.pdfAddress) {
-      fs.unlink(req.file.path, (unlinkErr) => {
-        if (unlinkErr) console.error("Failed to delete file:", unlinkErr);
-      });
-    }
     return res.status(400).json({ error: "Invalid or expired OTP" });
   }
 
   if (!userData) {
-    if (req.file) {
-      fs.unlink(req.file.path, (unlinkErr) => {
-        if (unlinkErr) console.error("Failed to delete file:", unlinkErr);
-      });
-    }
     return res.status(400).json({ error: "User data not found or expired" });
   }
-  const extractedData = await fetchNameLocationAndJobTitleFromPdf(
-    buffer,
-    req.ip
-  );
-  const pdfAddress = fs.readFileSync(req.file.path);
+
   const hashedPassword = await bcrypt.hash(userData.password, 10);
   const newUser = new User({
-    userName: extractedData.name,
-    pdfAddress: pdfAddress,
     email: email,
     password: hashedPassword,
-    jobTitle: extractedData.jobTitle,
-    location: extractedData.location,
+    userName: userData.name, // Assuming name is still part of userData
   });
 
   await newUser.save();
@@ -212,6 +181,12 @@ export const finalSignup = async (req, res) => {
   });
 
   return res.status(201).json({ message: "User registered successfully" });
+};
+
+export const uploadResume = async (rq, res) => {
+  if (!req.file) {
+    return res.status(400).json({ error: "Resume file is required" });
+  }
 };
 
 export const login = async (req, res) => {
