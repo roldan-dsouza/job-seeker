@@ -206,7 +206,7 @@ export const login = async (req, res) => {
 
     const payload = {
       _id: user._id,
-      username: user.userName,
+      email: user.email,
     };
 
     const accessToken = await createAccessToken(payload);
