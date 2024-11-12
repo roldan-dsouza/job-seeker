@@ -230,6 +230,16 @@ export const login = async (req, res) => {
   }
 };
 
+export const forgotPassword = async (req,res)=>{
+  if(!req.body.email){
+    return res.status(400).json({ "error": "Email is required" })
+  }
+  const {email}=req.body
+  const userExist = await User.findOne(email);
+  if(!userExist){return res.status(200).json({message: "If this email exists in our system, you will receive a password reset link." })}
+
+};
+
 export const uploadMiddleware = multer({
   storage: multer.diskStorage({
     destination: (req, file, cb) => {
