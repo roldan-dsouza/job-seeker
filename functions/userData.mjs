@@ -74,7 +74,7 @@ const pdfFunction = async (buffer, ip) => {
   return formattedText;
 };
 
-async function parsePdf(buffer) {
+export async function parsePdf(buffer) {
   return new Promise((resolve, reject) => {
     pdfParser.pdf2json(buffer, (error, pdfData) => {
       if (error) {

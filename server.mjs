@@ -16,14 +16,12 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const app = express();
 
-if (process.env.NODE_ENV == "DEVELOPMENT") {
-  mongoose
-    .connect(process.env.DATABASE_URL)
-    .then(console.log("Connected to database"))
-    .catch((error) => {
-      error: error.message;
-    });
-}
+mongoose
+  .connect(process.env.DATABASE_URL)
+  .then(console.log("Connected to database"))
+  .catch((error) => {
+    error: error.message;
+  });
 
 //app.use(express.urlencoded({ extended: true }));
 app.use(cors());

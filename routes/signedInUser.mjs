@@ -8,6 +8,7 @@ import {
   initialSignup,
   login,
   uploadMiddleware,
+  uploadResume,
 } from "../controller/authController.mjs";
 import { searchJobsWithPuppeteer } from "../controller/pdfController.mjs";
 import multer from "multer";
@@ -20,5 +21,6 @@ router.get("/login", login);
 router.post("/insights", getInsights);
 router.post("/salaryRange", getSalaryRanges);
 router.post("/jobLinksScrap", searchJobsWithPuppeteer);
+router.post("/uploadResume", uploadMiddleware, uploadResume);
 
 export default router;

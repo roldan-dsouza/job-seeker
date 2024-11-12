@@ -19,6 +19,7 @@ const userschema = Schema({
   },
   password: { type: String, required: true },
   appliedJobs: { type: String, required: false },
+  experience: { type: String, required: false },
 });
 
 export const User = mongoose.model("User", userschema);

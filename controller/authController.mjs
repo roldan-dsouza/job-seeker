@@ -14,7 +14,7 @@ import {
   fetchNameLocationAndJobTitleFromPdf,
   fetchNameLocationJobTitlesExperienceFromPdf,
 } from "../functions/userData.mjs";
-import { parsePdf, pdfFunction } from "./pdfController.mjs";
+import { parsePdf } from "../functions/userData.mjs";
 
 const cache = new NodeCache();
 
@@ -195,22 +195,22 @@ export const uploadResume = async (req, res) => {
 
   try {
     const pdfPath = req.file.path;
-    const pdfData = await parsePdf(req.file.buffer);
+    const pdfData = await parsePdf(req.file.path);
     const formattedText = pdfData.text.replace(/\n\n/g, "\n");
     const userData = await fetchNameLocationJobTitlesExperienceFromPdf(
-      req.file.buffer
+      req.file.path
     );
     // Save PDF path and extracted text in the user document
     await User.findByIdAndUpdate(
       req.user._id,
-      { pdfAddress: pdfPath, formattedText: formattedText },
+      { pdfAddress: pdfPath, formattedText: formattedText, userData },
       { new: true }
     );
 
     // Respond with success and extracted data
     res.status(200).json({ pdfAddress: pdfPath, formattedText: formattedText });
   } catch (error) {
-    res.status(500).json({ error: "Error processing PDF data" });
+    res.status(500).json({ error: error.message });
   }
 };
 
