@@ -143,7 +143,7 @@ export const getSalaryRanges = async (req, res) => {
 };
 
 // Function to parse the PDF using pdf-parser
-async function parsePdf(buffer) {
+export async function parsePdf(buffer) {
   return new Promise((resolve, reject) => {
     pdfParser.pdf2json(buffer, (error, pdfData) => {
       if (error) {

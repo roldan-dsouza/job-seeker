@@ -10,7 +10,11 @@ import mongoose from "mongoose";
 import NodeCache from "node-cache";
 import { sendOtp, verifyOtp } from "./otpControl.mjs";
 import { checkMissingFieldsInSignUp } from "../middleware/middleware.mjs";
-import { fetchNameLocationAndJobTitleFromPdf } from "../functions/userData.mjs";
+import {
+  fetchNameLocationAndJobTitleFromPdf,
+  fetchNameLocationJobTitlesExperienceFromPdf,
+} from "../functions/userData.mjs";
+import { parsePdf, pdfFunction } from "./pdfController.mjs";
 
 const cache = new NodeCache();
 
@@ -184,9 +188,29 @@ export const finalSignup = async (req, res) => {
   return res.status(201).json({ message: "User registered successfully" });
 };
 
-export const uploadResume = async (rq, res) => {
+export const uploadResume = async (req, res) => {
   if (!req.file) {
-    return res.status(400).json({ error: "Resume file is required" });
+    return res.status(400).json({ error: "PDF file is required" });
+  }
+
+  try {
+    const pdfPath = req.file.path;
+    const pdfData = await parsePdf(req.file.buffer);
+    const formattedText = pdfData.text.replace(/\n\n/g, "\n");
+    const userData = await fetchNameLocationJobTitlesExperienceFromPdf(
+      req.file.buffer
+    );
+    // Save PDF path and extracted text in the user document
+    await User.findByIdAndUpdate(
+      req.user._id,
+      { pdfAddress: pdfPath, formattedText: formattedText },
+      { new: true }
+    );
+
+    // Respond with success and extracted data
+    res.status(200).json({ pdfAddress: pdfPath, formattedText: formattedText });
+  } catch (error) {
+    res.status(500).json({ error: "Error processing PDF data" });
   }
 };
 
@@ -230,14 +254,18 @@ export const login = async (req, res) => {
   }
 };
 
-export const forgotPassword = async (req,res)=>{
-  if(!req.body.email){
-    return res.status(400).json({ "error": "Email is required" })
+export const forgotPassword = async (req, res) => {
+  if (!req.body.email) {
+    return res.status(400).json({ error: "Email is required" });
   }
-  const {email}=req.body
+  const { email } = req.body;
   const userExist = await User.findOne(email);
-  if(!userExist){return res.status(200).json({message: "If this email exists in our system, you will receive a password reset link." })}
-
+  if (!userExist) {
+    return res.status(200).json({
+      message:
+        "If this email exists in our system, you will receive a password reset link.",
+    });
+  }
 };
 
 export const uploadMiddleware = multer({

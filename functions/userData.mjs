@@ -130,3 +130,59 @@ export async function fetchSkillsExperienceLocationFromPdf(formattedText) {
     );
   }
 }
+
+export async function fetchNameLocationJobTitlesExperienceFromPdf(buffer, ip) {
+  console.log("Destination 1");
+  try {
+    const formattedText = await pdfFunction(buffer, ip);
+    const nameLocationTitleMessage = {
+      role: "system",
+      content:
+        "Extract only the person's name, city name, and job title from the following resume text. Return them in JSON format as { 'name': '<person's name>', 'location': '<city name>', 'job title': ['<title>'],'experience':'<person's experience>(beginner intermediate or senior nothing else and be very strict)' }. jobTitle means the type of job I can apply to send the title of job not the skill. Do not send anything other than the name, location, and job title in JSON format like NOTHING else",
+    };
+    const userMessage = {
+      role: "user",
+      content: `${formattedText}`,
+    };
+    const response = await axios.post(
+      `${CLOUDFLARE_BASE_URL}${process.env.LLAMA_END_POINT}`,
+      { messages: [nameLocationTitleMessage, userMessage] },
+      { headers: AUTHORIZATION_HEADER }
+    );
+
+    // Log the raw response for debugging
+    console.log("Raw response from AI:", response.data);
+
+    // Extract the response text from the result
+    const responseText = response.data.result.response;
+
+    // Clean the responseText to extract only the JSON part
+    const jsonResponseMatch = responseText.match(/{.*}/s);
+    if (!jsonResponseMatch) {
+      throw new Error("Failed to extract JSON from response");
+    }
+
+    // Parse the JSON response
+    const parsedData = JSON.parse(jsonResponseMatch[0]);
+
+    // Log the parsed data for debugging
+    console.log(
+      "Parsed name, location, and job title from AI response:",
+      parsedData
+    );
+
+    // Extract and return the name, location, and job title
+    const name = parsedData["name"];
+    const location = parsedData["location"];
+    const jobTitle = parsedData["job title"];
+    return { name, location, jobTitle };
+  } catch (error) {
+    console.error(
+      "Error fetching name, location, and job title:",
+      error.message
+    );
+    throw new Error(
+      "Failed to fetch name, location, and job title from the AI model."
+    );
+  }
+}
