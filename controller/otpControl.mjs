@@ -17,7 +17,7 @@ const transporter = nodemailer.createTransport({
 
 export async function sendOtp(email) {
   const otp = crypto.randomInt(100000, 999999).toString();
-
+  cache.del(email);
   // Store OTP in cache with expiration (5 mins)
   cache.set(email, otp, 300); // 300 seconds = 5 minutes
 

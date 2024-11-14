@@ -106,7 +106,6 @@ export const initialSignup = async (req, res) => {
       .status(500)
       .json({ error: "Database connection issue. Please try again later." });
   }
-  console.log(req.body);
   const { password, confirmPassword, email } = req.body;
   try {
     await userSchema.validateAsync({
@@ -185,6 +184,7 @@ export const finalSignup = async (req, res) => {
     maxAge: 30 * 24 * 60 * 60 * 1000,
   });
 
+  cache.del(email);
   return res.status(201).json({ message: "User registered successfully" });
 };
 
