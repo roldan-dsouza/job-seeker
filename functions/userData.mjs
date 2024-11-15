@@ -134,41 +134,56 @@ export async function fetchSkillsExperienceLocationFromPdf(formattedText) {
 export async function fetchNameLocationJobTitlesExperienceFromPdf(buffer, ip) {
   try {
     const formattedText = await pdfFunction(buffer, ip);
+
     const nameLocationTitleMessage = {
       role: "system",
       content:
-        "Extract only the person's name, city name, and job title from the following resume text. Return them in JSON format as { 'name': '<person's name>', 'location': '<city name>', 'jobTitle': '<title>', skills:[<skills>], 'experience':'<person's experience>(beginner intermediate or senior nothing else and be very strict)' }. jobTitle means the type of job I can apply to send the title of job not the skill. Do not send anything other than the name, location, and job title in JSON format like NOTHING else",
+        "Extract only the person's name, city name, and job title from the following resume text. Return them in JSON format as { 'name': '<person's name>', 'location': '<city name>', 'jobTitle': '<title>', 'skills':['<skills>(skills based on the resume)'], 'experience':'<person's experience>(beginner intermediate or senior nothing else and be very strict)' }. jobTitle means the type of job I can apply to send the title of job not the skill. Do not send anything other than the name, location, and job title in JSON format like NOTHING else",
     };
     const userMessage = {
       role: "user",
       content: `${formattedText}`,
     };
+
     const response = await axios.post(
       `${CLOUDFLARE_BASE_URL}${process.env.LLAMA_END_POINT}`,
       { messages: [nameLocationTitleMessage, userMessage] },
       { headers: AUTHORIZATION_HEADER }
     );
 
-    // Extract the response text from the result
     const responseText = response.data.result.response;
 
-    // Clean the responseText to extract only the JSON part
     const jsonResponseMatch = responseText.match(/{.*}/s);
     if (!jsonResponseMatch) {
-      await fetchNameLocationJobTitlesExperienceFromPdf(buffer, ip);
+      console.log("Retrying: JSON response missing...");
+      return await fetchNameLocationJobTitlesExperienceFromPdf(buffer, ip);
     }
 
-    // Parse the JSON response
     const parsedData = JSON.parse(jsonResponseMatch[0]);
 
-    console.log(parsedData.jobTitle);
-    // Extract and return the name, location, and job title
+    const requiredFields = [
+      "name",
+      "location",
+      "jobTitle",
+      "skills",
+      "experience",
+    ];
+    for (const field of requiredFields) {
+      if (
+        !parsedData[field] ||
+        (Array.isArray(parsedData[field]) && !parsedData[field].length)
+      ) {
+        console.log(`Retrying: Missing field "${field}"...`);
+        return await fetchNameLocationJobTitlesExperienceFromPdf(buffer, ip);
+      }
+    }
+
     const name = parsedData["name"];
     const location = parsedData["location"];
     const jobTitle = parsedData["jobTitle"];
     const skills = parsedData["skills"];
     const experience = parsedData["experience"];
-    return { name, location, jobTitle, experience ,skills};
+    return { name, location, jobTitle, experience, skills };
   } catch (error) {
     console.error(
       "Error fetching name, location, and job title:",

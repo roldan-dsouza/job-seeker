@@ -15,6 +15,7 @@ import {
   fetchNameLocationJobTitlesExperienceFromPdf,
 } from "../functions/userData.mjs";
 import { parsePdf } from "../functions/userData.mjs";
+import { error } from "console";
 
 const cache = new NodeCache();
 
@@ -194,14 +195,24 @@ export const uploadResume = async (req, res) => {
   }
 
   try {
+    const user = await User.findById(req.body.id);
+    if (!user) {
+      return res.status(404).json({ error: "User with that ID doesn't exist" });
+    }
+
+    if (user.pdfAddress) {
+      fs.unlink(user.pdfAddress, (err) => {
+        if (err) console.error("Failed to delete old PDF:", err);
+      });
+    }
+
     const pdfPath = req.file.path;
-    const pdfData = await parsePdf(req.file.path);
+    const pdfData = await parsePdf(pdfPath);
     const formattedText = pdfData.text.replace(/\n\n/g, "\n");
-    const userData = await fetchNameLocationJobTitlesExperienceFromPdf(
-      req.file.path
-    );
+    const userData = await fetchNameLocationJobTitlesExperienceFromPdf(pdfPath);
     console.log(userData);
-    // Save PDF path and extracted text in the user document
+
+    // Update user document with new PDF and extracted data
     await User.findByIdAndUpdate(
       req.body.id,
       {
