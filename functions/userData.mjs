@@ -132,7 +132,6 @@ export async function fetchSkillsExperienceLocationFromPdf(formattedText) {
 }
 
 export async function fetchNameLocationJobTitlesExperienceFromPdf(buffer, ip) {
-  console.log("Destination 1");
   try {
     const formattedText = await pdfFunction(buffer, ip);
     const nameLocationTitleMessage = {
@@ -150,9 +149,6 @@ export async function fetchNameLocationJobTitlesExperienceFromPdf(buffer, ip) {
       { headers: AUTHORIZATION_HEADER }
     );
 
-    // Log the raw response for debugging
-    console.log("Raw response from AI:", response.data);
-
     // Extract the response text from the result
     const responseText = response.data.result.response;
 
@@ -165,17 +161,13 @@ export async function fetchNameLocationJobTitlesExperienceFromPdf(buffer, ip) {
     // Parse the JSON response
     const parsedData = JSON.parse(jsonResponseMatch[0]);
 
-    // Log the parsed data for debugging
-    console.log(
-      "Parsed name, location, and job title from AI response:",
-      parsedData
-    );
-
+    console.log(parsedData.jobTitle);
     // Extract and return the name, location, and job title
     const name = parsedData["name"];
     const location = parsedData["location"];
-    const jobTitle = parsedData["job title"];
-    return { name, location, jobTitle };
+    const jobTitle = parsedData["jobTitle"];
+    const experience = parsedData["experience"];
+    return { name, location, jobTitle, experience };
   } catch (error) {
     console.error(
       "Error fetching name, location, and job title:",
