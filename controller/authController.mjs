@@ -200,10 +200,18 @@ export const uploadResume = async (req, res) => {
     const userData = await fetchNameLocationJobTitlesExperienceFromPdf(
       req.file.path
     );
+    console.log(userData);
     // Save PDF path and extracted text in the user document
     await User.findByIdAndUpdate(
-      req.user._id,
-      { pdfAddress: pdfPath, formattedText: formattedText, userData },
+      req.body.id,
+      {
+        pdfAddress: pdfPath,
+        formattedText: formattedText,
+        userName: userData.name,
+        jobTitle: userData.jobTitle,
+        location: userData.location,
+        experience: userData.experience,
+      },
       { new: true }
     );
 

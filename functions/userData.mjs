@@ -138,7 +138,7 @@ export async function fetchNameLocationJobTitlesExperienceFromPdf(buffer, ip) {
     const nameLocationTitleMessage = {
       role: "system",
       content:
-        "Extract only the person's name, city name, and job title from the following resume text. Return them in JSON format as { 'name': '<person's name>', 'location': '<city name>', 'job title': ['<title>'],'experience':'<person's experience>(beginner intermediate or senior nothing else and be very strict)' }. jobTitle means the type of job I can apply to send the title of job not the skill. Do not send anything other than the name, location, and job title in JSON format like NOTHING else",
+        "Extract only the person's name, city name, and job title from the following resume text. Return them in JSON format as { 'name': '<person's name>', 'location': '<city name>', 'jobTitle': ['<title>'],'experience':'<person's experience>(beginner intermediate or senior nothing else and be very strict)' }. jobTitle means the type of job I can apply to send the title of job not the skill. Do not send anything other than the name, location, and job title in JSON format like NOTHING else",
     };
     const userMessage = {
       role: "user",
