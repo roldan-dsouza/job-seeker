@@ -5,7 +5,8 @@ const userschema = Schema({
   pdfAddress: { type: String, required: false },
   formattedText: { type: String },
   location: { type: String, required: false },
-  jobTitle: [{ type: String, required: false }],
+  jobTitle: { type: String, required: false },
+  skills: [{ type: String }],
   email: {
     type: String,
     required: true,

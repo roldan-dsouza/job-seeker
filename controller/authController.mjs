@@ -209,6 +209,7 @@ export const uploadResume = async (req, res) => {
         formattedText: formattedText,
         userName: userData.name,
         jobTitle: userData.jobTitle,
+        skills: userData.skills,
         location: userData.location,
         experience: userData.experience,
       },
