@@ -147,12 +147,12 @@ export const finalSignup = async (req, res) => {
   const userData = cache.get(email);
   const otpValid = await verifyOtp(email, otp);
 
-  if (!otpValid) {
-    return res.status(400).json({ error: "Invalid or expired OTP" });
-  }
-
   if (!userData) {
     return res.status(400).json({ error: "User data not found or expired" });
+  }
+  if (otpValid.valid == false) {
+    cache.del(email);
+    return res.status(400).json({ error: otpValid.message });
   }
 
   const hashedPassword = await bcrypt.hash(userData.password, 10);

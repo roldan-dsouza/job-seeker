@@ -17,8 +17,7 @@ const transporter = nodemailer.createTransport({
 
 export async function sendOtp(email) {
   const otp = crypto.randomInt(100000, 999999).toString();
-  cache.del(email);
-  // Store OTP in cache with expiration (5 mins)
+  deleteOtp(email);
   cache.set(email, otp, 300); // 300 seconds = 5 minutes
 
   const mailOptions = {
@@ -51,7 +50,7 @@ export function deleteOtp(email) {
 export async function verifyOtp(email, otp) {
   // Retrieve OTP from cache
   const cachedOtp = retrieveOtp(email);
-
+  console.log(cachedOtp);
   if (!cachedOtp) {
     return { valid: false, message: "OTP expired or not found" };
   }
