@@ -63,9 +63,14 @@ export const getContent = async (req, res) => {
   const contentResponse = {
     id: id,
     time: formattedTime,
+    status: "draft",
     title: title,
     platform: platform,
     content: response.body.message,
   };
   res.status(202).json(contentResponse);
 };
+
+export const updateSavedConstant = async (req,res)=>{
+  
+}
