@@ -23,7 +23,7 @@ router.post("/login", login);
 router.post("/insights", getInsights);
 router.post("/salaryRange", getSalaryRanges);
 router.post("/jobLinksScrap", searchJobsWithPuppeteer);
-router.post("/uploadResume", uploadMiddleware, uploadResume);
-router.post("/getContent", verifyToken,getContent);
+router.post("/uploadResume", verifyToken, uploadMiddleware, uploadResume);
+router.post("/getContent", verifyToken, getContent);
 
 export default router;

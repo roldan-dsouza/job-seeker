@@ -58,26 +58,12 @@ export async function createRefreshToken(user, res) {
 refresh-token: xyz987lmn654opq321*/
 
 export const verifyToken = async (req, res, next) => {
-  const authHeader = req.headers["authorization"];
-  const refreshToken = req.cookies["refreshToken"];  // Get the refresh token from cookies
-  
-  let accessToken;
+  const accessToken = req.cookies["access_token"];
+  const refreshToken = req.cookies["refreshToken"]; // Get the refresh token from cookies
 
-  // Check for Authorization header (for access token)
-  if (authHeader) {
-    const parts = authHeader.split(" ");
-
-    if (parts.length === 2 && parts[0] === "Bearer") {
-      accessToken = parts[1];
-    } else {
-      return res
-        .status(400)
-        .json({ error: "Invalid Authorization header format for access token" });
-    }
-  } else {
-    return res.status(401).json({ error: "Authorization header missing" });
+  if (!accessToken) {
+    return res.status(401).json({ error: "Access token missing" });
   }
-
   // Check if refresh token is available
   if (!refreshToken) {
     return res.status(401).json({ error: "Refresh token missing" });
@@ -102,7 +88,7 @@ export const verifyToken = async (req, res, next) => {
           refreshToken,
           process.env.refreashTokenKey
         );
-        
+
         const newAccessToken = createAccessToken(decodedRefresh);
 
         // Set new access token in cookie

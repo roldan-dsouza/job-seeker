@@ -187,9 +187,8 @@ export const uploadResume = async (req, res) => {
   if (!req.file) {
     return res.status(400).json({ error: "PDF file is required" });
   }
-
   try {
-    const user = await User.findById(req.body.id);
+    const user = await User.findById(req.user.userid);
     if (!user) {
       return res.status(404).json({ error: "User with that ID doesn't exist" });
     }
@@ -208,7 +207,7 @@ export const uploadResume = async (req, res) => {
 
     // Update user document with new PDF and extracted data
     await User.findByIdAndUpdate(
-      req.body.id,
+      req.user.userid,
       {
         pdfAddress: pdfPath,
         formattedText: formattedText,
