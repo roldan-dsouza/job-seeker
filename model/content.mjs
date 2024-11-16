@@ -4,7 +4,7 @@ const contentSchema = Schema({
   title: { type: String },
   type: {
     type: String,
-    enum: ["email", "linkdn", "coverPage", "instagram"],
+    enum: ["email", "linkdn", "coverLetter", "instagram"],
     required: true,
   },
   content: { type: String },
@@ -13,7 +13,7 @@ const contentSchema = Schema({
     enum: ["draft", "notPublished", "published"],
     default: "draft",
   },
-  date: { type: Date },
+  date: { type: String },
 });
 
 export const content = mongoose.model("content", contentSchema);
