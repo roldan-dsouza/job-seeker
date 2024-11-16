@@ -3,7 +3,9 @@ import { content } from "../model/content.mjs";
 import { generateContent } from "../functions/getContent.mjs";
 
 export const getContent = async (req, res) => {
-  const { id, platform } = req.body;
+  const id = req.user.userid;
+  const { platform } = req.body;
+
   if (!id || !platform) {
     return res.status(400).json({ error: "missing fields" });
   }
@@ -19,6 +21,7 @@ export const getContent = async (req, res) => {
   if (response.success == false && response.message == "noPdf") {
     return res.status(400).json({ error: "User hasnt uploaded the resume" });
   }
+
   const now = new Date();
   const formattedTime = now.toLocaleString("en-GB", {
     day: "2-digit",
@@ -54,7 +57,12 @@ export const getContent = async (req, res) => {
 
   try {
     await newContent.save();
-    console.log("Successfully saved in the database");
+    console.log("Successfully saved in the database   ");
+    await User.findOneAndUpdate(
+      { _id: id },
+      { contentId: newContent._id },
+      { new: true }
+    );
   } catch (err) {
     console.log(err.message);
     res.status(500).json("Failed to save in database");
@@ -71,6 +79,4 @@ export const getContent = async (req, res) => {
   res.status(202).json(contentResponse);
 };
 
-export const updateSavedConstant = async (req,res)=>{
-  
-}
+export const updateSavedConstant = async (req, res) => {};
