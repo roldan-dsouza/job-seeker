@@ -69,7 +69,8 @@ export const getContent = async (req, res) => {
   }
 
   const contentResponse = {
-    id: id,
+    userid: id,
+    contentid: newContent._id,
     time: formattedTime,
     status: "draft",
     title: title,
@@ -79,4 +80,13 @@ export const getContent = async (req, res) => {
   res.status(202).json(contentResponse);
 };
 
-export const updateSavedConstant = async (req, res) => {};
+export const updateSavedContent = async (req, res) => {
+  const id = req.user.userid;
+  const preSave = req.body;
+  try{
+  const savedContent = await findOne({_id:preSave.contentid});
+  }catch(err){
+    return res.status(404).json({error:"Content could not be found"});
+  }
+  
+};

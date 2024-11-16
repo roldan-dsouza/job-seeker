@@ -171,18 +171,12 @@ export const finalSignup = async (req, res) => {
   };
 
   const accessToken = await createAccessToken(payload);
-  const refreshToken = await createRefreshToken(payload);
+  const refreshToken = await createRefreshToken(payload, res);
 
   res.cookie("access_token", accessToken, {
     httpOnly: true,
     secure: process.env.NODE_ENV === "production",
     maxAge: 15 * 60 * 1000 * 8,
-  });
-
-  res.cookie("refresh_token", refreshToken, {
-    httpOnly: true,
-    secure: process.env.NODE_ENV === "production",
-    maxAge: 30 * 24 * 60 * 60 * 1000,
   });
 
   cache.del(email);
