@@ -50,7 +50,7 @@ export const getContent = async (req, res) => {
 
   const newContent = new content({
     title: title,
-    type: platform,
+    platform: platform,
     content: response.body.message || response.body.messageBody,
     date: formattedTime,
   });
@@ -83,10 +83,39 @@ export const getContent = async (req, res) => {
 export const updateSavedContent = async (req, res) => {
   const id = req.user.userid;
   const preSave = req.body;
-  try{
-  const savedContent = await findOne({_id:preSave.contentid});
-  }catch(err){
-    return res.status(404).json({error:"Content could not be found"});
+  try {
+    await content.findOne({ _id: preSave.contentid });
+  } catch (err) {
+    return res.status(404).json({ error: "Content could not be found" });
   }
-  
+
+  const now = new Date();
+  const formattedTime = now.toLocaleString("en-GB", {
+    day: "2-digit",
+    month: "short",
+    year: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
+    hour12: true,
+  });
+
+  const data = {
+    title: preSave.title,
+    platform: preSave.platform,
+    content: preSave.content,
+    status: preSave.status,
+    time: formattedTime,
+  };
+  try {
+    const updatedData = await content.findOneAndUpdate(
+      { _id: preSave.contentid },
+      { $set: data },
+      { new: true, runValidators: true }
+    );
+    return res
+      .status(200)
+      .json({ success: "true", updatedContent: updatedData });
+  } catch (err) {
+    return res.status(500).json({ error: error.message });
+  }
 };

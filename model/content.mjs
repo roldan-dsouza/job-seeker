@@ -2,7 +2,7 @@ import mongoose, { Schema, mongo } from "mongoose";
 
 const contentSchema = Schema({
   title: { type: String },
-  type: {
+  platform: {
     type: String,
     enum: ["email", "linkdn", "coverLetter", "instagram"],
     required: true,
