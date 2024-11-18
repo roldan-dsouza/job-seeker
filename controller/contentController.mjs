@@ -119,3 +119,27 @@ export const updateSavedContent = async (req, res) => {
     return res.status(500).json({ error: error.message });
   }
 };
+
+export const deleteSavedContent = async (req, res) => {
+  const id = req.user;
+  if (!id) return res.status(500).json({ error: "bypassed authentication" });
+  const { contentid } = req.body;
+  if (!contentid)
+    return res.status(400).json({ error: "missing field contentid" });
+  if (!(await content.findOne(contentid)))
+    return res.status(404).json({ error: "content could not be found" });
+  try {
+    const deletedContent = await content.findByIdAndDelete({ _id: contentid });
+    const result = await User.findOneAndUpdate(
+      { _id: id },
+      { $pull: { contentId: contentid } },
+      { new: true }
+    );
+    return res.status(200).json({
+      success: true,
+      message: "Successfully deleted from the database",
+    });
+  } catch (error) {
+    return res.status(500).json({ error: "internal server error" });
+  }
+};
