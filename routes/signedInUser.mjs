@@ -13,7 +13,7 @@ import {
 import { searchJobsWithPuppeteer } from "../controller/pdfController.mjs";
 import multer from "multer";
 import path from "path";
-import { getContent } from "../controller/contentController.mjs";
+import { allContent, getContent } from "../controller/contentController.mjs";
 import { verifyToken } from "../jwtToken.mjs";
 const router = Router();
 
@@ -24,6 +24,6 @@ router.post("/insights", getInsights);
 router.post("/salaryRange", getSalaryRanges);
 router.post("/jobLinksScrap", searchJobsWithPuppeteer);
 router.post("/uploadResume", verifyToken, uploadMiddleware, uploadResume);
-router.post("/getContent", verifyToken, getContent);
-
+router.post("/uploadContent", verifyToken, getContent);
+router.post("/allContent", verifyToken, allContent);
 export default router;

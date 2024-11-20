@@ -14,6 +14,7 @@ const contentSchema = Schema({
     default: "draft",
   },
   date: { type: String },
+  userId: { type: String },
 });
 
 export const content = mongoose.model("content", contentSchema);

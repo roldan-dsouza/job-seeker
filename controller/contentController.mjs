@@ -51,18 +51,14 @@ export const getContent = async (req, res) => {
   const newContent = new content({
     title: title,
     platform: platform,
-    content: response.body.message || response.body.messageBody,
+    content: response.body.message,
     date: formattedTime,
+    userId: id,
   });
 
   try {
     await newContent.save();
     console.log("Successfully saved in the database   ");
-    await User.findOneAndUpdate(
-      { _id: id },
-      { contentId: newContent._id },
-      { new: true }
-    );
   } catch (err) {
     console.log(err.message);
     res.status(500).json("Failed to save in database");
@@ -121,7 +117,7 @@ export const updateSavedContent = async (req, res) => {
 };
 
 export const deleteSavedContent = async (req, res) => {
-  const id = req.user;
+  const id = req.user.userid;
   if (!id) return res.status(500).json({ error: "bypassed authentication" });
   const { contentid } = req.body;
   if (!contentid)
@@ -130,11 +126,6 @@ export const deleteSavedContent = async (req, res) => {
     return res.status(404).json({ error: "content could not be found" });
   try {
     const deletedContent = await content.findByIdAndDelete({ _id: contentid });
-    const result = await User.findOneAndUpdate(
-      { _id: id },
-      { $pull: { contentId: contentid } },
-      { new: true }
-    );
     return res.status(200).json({
       success: true,
       message: "Successfully deleted from the database",
@@ -142,4 +133,10 @@ export const deleteSavedContent = async (req, res) => {
   } catch (error) {
     return res.status(500).json({ error: "internal server error" });
   }
+};
+
+export const allContent = async (req, res) => {
+  const id = req.user.userid;
+  const availableContents = await content.find({ userId: id });
+  return res.status(200).json({ availableContents });
 };
