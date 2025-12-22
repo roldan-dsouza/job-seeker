@@ -10,9 +10,8 @@ import NodeCache from "node-cache";
 import { fetchNameLocationJobTitlesExperienceFromPdf } from "../functions/userData.mjs";
 import { parsePdf } from "../functions/userData.mjs";
 import { userSchema } from "../helper/authHelper.mjs";
-import { createOtp } from "../utils/otp.mjs";
+import { createOtp, verifyOtp } from "../utils/otp.mjs";
 import { sendOtpBrevo } from "../services/mail.mjs";
-
 const cache = new NodeCache();
 
 const __filename = fileURLToPath(import.meta.url);
@@ -83,7 +82,6 @@ export const finalSignup = async (req, res) => {
   const newUser = new User({
     email: email,
     password: hashedPassword,
-    userName: userData.name, // Assuming name is still part of userData
   });
 
   await newUser.save();

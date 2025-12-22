@@ -10,6 +10,34 @@ export function createOtp(email) {
     cache.set(email, otp, 300);
     return otp;
   } catch (err) {
-    return { status: true, msg: "Error generating OTP:" };
+    return { status: false, msg: "Error generating OTP:" };
+  }
+}
+
+// Helper to retrieve OTP (used in verifyOtp)
+export function retrieveOtp(email) {
+  return cache.get(email);
+}
+
+// Helper to delete OTP (also used in verifyOtp after successful or failed validation)
+export function deleteOtp(email) {
+  cache.del(email);
+}
+
+export async function verifyOtp(email, otp) {
+  // Retrieve OTP from cache
+  const cachedOtp = retrieveOtp(email);
+  console.log(cachedOtp);
+  if (!cachedOtp) {
+    return { valid: false, message: "OTP expired or not found" };
+  }
+
+  if (cachedOtp === otp) {
+    // OTP is valid; delete it after successful verification
+    deleteOtp(email);
+    return { valid: true, message: "OTP verified successfully" };
+  } else {
+    // OTP invalid
+    return { valid: false, message: "Invalid OTP" };
   }
 }
