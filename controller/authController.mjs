@@ -7,40 +7,16 @@ import bcrypt from "bcrypt";
 import fs from "fs";
 import mongoose from "mongoose";
 import NodeCache from "node-cache";
-import { sendOtp, verifyOtp } from "./otpControl.mjs";
 import { fetchNameLocationJobTitlesExperienceFromPdf } from "../functions/userData.mjs";
 import { parsePdf } from "../functions/userData.mjs";
 import { userSchema } from "../helper/authHelper.mjs";
+import { createOtp } from "../utils/otp.mjs";
+import { sendOtpBrevo } from "../services/mail.mjs";
 
 const cache = new NodeCache();
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
-
-// Set up Multer storage configuration with file filter to only allow PDFs
-const storage = multer.diskStorage({
-  destination: (req, file, cb) => {
-    cb(null, path.join(__dirname, "../public/uploads"));
-  },
-  filename: (req, file, cb) => {
-    const uniqueName = Date.now() + "-" + Math.round(Math.random() * 1e9);
-    const newFilename = "PFP_" + uniqueName + path.extname(file.originalname);
-    cb(null, newFilename);
-  },
-});
-
-const fileFilter = (req, file, cb) => {
-  if (file.mimetype !== "application/pdf") {
-    return cb(new Error("Only PDF files are allowed!"), false);
-  }
-  cb(null, true);
-};
-
-const upload = multer({
-  storage: storage,
-  fileFilter: fileFilter,
-  limits: { fileSize: 10 * 1024 * 1024 },
-}).single("pdfFile");
 
 export const initialSignup = async (req, res) => {
   if (mongoose.connection.readyState !== 1) {
@@ -61,7 +37,13 @@ export const initialSignup = async (req, res) => {
       return res.status(409).json({ error: "Email already registered" });
     }
 
-    const otpSent = await sendOtp(email);
+    //generate OTP and validate
+    const otp = createOtp(email);
+    if (!otp) {
+      return res.status(500).json({ error: "Failed to generate OTP" });
+    }
+
+    const otpSent = await sendOtpBrevo(process.env.EMAIL_USER, email, otp);
     if (!otpSent) {
       return res.status(500).json({ error: "Failed to send OTP" });
     }

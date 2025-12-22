@@ -5,9 +5,9 @@ dotenv.config();
 const API_URL = "https://api.brevo.com/v3/smtp/email";
 const API_KEY = process.env.BREVO_API_KEY;
 
-export const sendOtpBrevo = async (event, to, otp) => {
+export const sendOtpBrevo = async (sender, to, otp) => {
   const emailData = {
-    sender: { name: event, email: process.env.EMAIL_USER },
+    sender: { name: sender, email: process.env.EMAIL_USER },
     to: { email: to },
     subject: `Your OTP Code`,
     htmlContent: `Your OTP code is ${otp}. It is valid for 5 minutes.`,
