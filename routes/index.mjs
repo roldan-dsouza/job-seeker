@@ -4,7 +4,6 @@ import {
   getInsights,
   getJobLinks,
   getSalaryRanges,
-  pdfFunction,
   searchJobsWithPuppeteer,
   upload,
   validateFileType,

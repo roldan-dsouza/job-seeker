@@ -9,13 +9,8 @@ import fs from "fs";
 import mongoose from "mongoose";
 import NodeCache from "node-cache";
 import { sendOtp, verifyOtp } from "./otpControl.mjs";
-import { checkMissingFieldsInSignUp } from "../middleware/middleware.mjs";
-import {
-  fetchNameLocationAndJobTitleFromPdf,
-  fetchNameLocationJobTitlesExperienceFromPdf,
-} from "../functions/userData.mjs";
+import { fetchNameLocationJobTitlesExperienceFromPdf } from "../functions/userData.mjs";
 import { parsePdf } from "../functions/userData.mjs";
-import { error } from "console";
 
 const cache = new NodeCache();
 
@@ -23,32 +18,6 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 // Define user schema for validation
-
-const userSchema2 = Joi.object({
-  username: Joi.string().min(3).max(30).required().messages({
-    "string.base": "Username must be a string",
-    "string.empty": "Username cannot be empty",
-    "string.min": "Username must be at least {#limit} characters long",
-    "string.max": "Username must be at most {#limit} characters long",
-    "any.required": "Username is required",
-  }),
-  jobTitle: Joi.alternatives().try(
-    Joi.string().required().messages({
-      "string.base": "Job Title must be a string",
-      "string.empty": "Job Title cannot be empty",
-      "any.required": "Job Title is required",
-    }),
-    Joi.array().items(Joi.string()).required().messages({
-      "array.base": "Job Title must be an array of strings",
-      "any.required": "Job Title is required",
-    })
-  ),
-  location: Joi.string().required().messages({
-    "string.base": "Location must be a string",
-    "string.empty": "Location cannot be empty",
-    "any.required": "Location is required",
-  }),
-});
 
 const userSchema = Joi.object({
   email: Joi.string()
