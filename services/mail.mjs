@@ -5,7 +5,7 @@ dotenv.config();
 const API_URL = "https://api.brevo.com/v3/smtp/email";
 const API_KEY = process.env.BREVO_API_KEY;
 
-export const sendConfirmationEmail = async (event, to, otp) => {
+export const sendOtpBrevo = async (event, to, otp) => {
   const emailData = {
     sender: { name: event, email: process.env.EMAIL_USER },
     to: { email: to },
