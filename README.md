@@ -1,1 +1,3 @@
 # job-application-Tikanga-
+
+Revisiting and fixing one of my old repos so dont judge me after reading the code...
