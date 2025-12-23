@@ -1,12 +1,12 @@
 import mongoose, { Schema } from "mongoose";
 
 const userschema = Schema({
-  userName: { type: String, required: false },
-  pdfAddress: { type: String, required: false },
-  formattedText: { type: String },
-  location: { type: String, required: false },
-  jobTitle: { type: String, required: false },
-  skills: [{ type: String }],
+  userName: { type: String, required: false, sparse: true },
+  pdfAddress: { type: String, required: false, sparse: true },
+  formattedText: { type: String, sparse: true },
+  location: { type: String, required: false, sparse: true },
+  jobTitle: { type: String, required: false, sparse: true },
+  skills: [{ type: String, sparse: true }],
   email: {
     type: String,
     required: true,
@@ -19,8 +19,8 @@ const userschema = Schema({
     },
   },
   password: { type: String, required: true },
-  appliedJobs: { type: String, required: false },
-  experience: { type: String, required: false },
+  appliedJobs: { type: String, required: false, sparse: true },
+  experience: { type: String, required: false, sparse: true },
 });
 
 export const User = mongoose.model("User", userschema);
