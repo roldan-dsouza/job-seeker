@@ -8,7 +8,12 @@ import {
   createJobMessages,
   createSalaryMessages,
 } from "../prompt/resumePrompt.mjs";
-import { fetchFromCloudflare } from "../services/cloudFLare.mjs";
+import { fetchFromCloudflare } from "../services/cloud-flare/cloudFLare.mjs";
+import { pdfFunction } from "../utils/pdf-functions.mjs";
+import {
+  fetchJobLinks,
+  fetchSalaryRanges,
+} from "../services/cloud-flare/job-scrapeServices.mjs";
 
 // Middleware for getting insights
 export const getInsights = async (req, res) => {
@@ -63,7 +68,7 @@ export const getJobLinks = async (req, res) => {
     });
   }
 };
-``;
+
 // Middleware for getting salary ranges
 export const getSalaryRanges = async (req, res) => {
   const ip = req.ip;
@@ -97,16 +102,6 @@ export const getSalaryRanges = async (req, res) => {
 };
 
 // ... [Rest of the functions remain unchanged]
-
-// Function to fetch job links specifically
-async function fetchJobLinks(messages) {
-  return await fetchFromCloudflare(messages);
-}
-
-// Function to fetch salary ranges specifically
-async function fetchSalaryRanges(messages) {
-  return await fetchFromCloudflare(messages);
-}
 
 // Function to extract links from the response text
 function extractLinks(text) {

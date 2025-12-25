@@ -54,3 +54,22 @@ export function createSalaryMessages(formattedText, location) {
     },
   ];
 }
+
+export const nameLocationJobTitlePrompt = {
+  role: "system",
+  content: `
+Extract only the person's name, city name, and job title from the following resume text.
+
+Return STRICT JSON in this format:
+{
+  "name": "<person's name>",
+  "location": "<city name>",
+  "job title": "<specific job title>"
+}
+
+Rules:
+- job title means the type of job the person can apply for
+- return ONLY ONE job title
+- do NOT return anything outside JSON
+`.trim(),
+};
