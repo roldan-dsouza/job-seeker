@@ -26,7 +26,6 @@ export function createJobMessages(formattedText, location) {
   ];
 }
 
-// Function to create messages for salary ranges
 export function createSalaryMessages(formattedText, location) {
   return [
     {
@@ -112,5 +111,23 @@ Rules:
 - jobTitle = role they can apply for (NOT skill)
 - be strict
 - no extra output
+`.trim(),
+};
+
+export const jobDetailsPrompt = {
+  role: "system",
+  content: `
+Extract ONLY the following from the resume text and return STRICT JSON:
+
+{
+  "jobTitle": "<eligible job title>",
+  "location": "<city>",
+  "experience level": "<beginner | intermediate | senior>"
+}
+
+Rules:
+- Only ONE job title
+- No extra text
+- JSON only
 `.trim(),
 };

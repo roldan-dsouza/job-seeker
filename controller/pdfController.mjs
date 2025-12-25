@@ -1,4 +1,3 @@
-import axios from "axios";
 import { fork } from "child_process";
 import path from "path";
 import { fetchSkillsExperienceLocationFromPdf } from "../utils/userData.mjs";
@@ -14,6 +13,8 @@ import {
   fetchJobLinks,
   fetchSalaryRanges,
 } from "../services/ai/job-scrapeServices.mjs";
+import { extractLinks } from "../services/ai/job-scrapeServices.mjs";
+import { fetchJobDetailsFromPdf } from "../services/resumeExtractService.mjs";
 
 // Middleware for getting insights
 export const getInsights = async (req, res) => {
@@ -101,32 +102,6 @@ export const getSalaryRanges = async (req, res) => {
   }
 };
 
-// ... [Rest of the functions remain unchanged]
-
-// Function to extract links from the response text
-function extractLinks(text) {
-  // Check if text is in the expected format
-  if (!text || typeof text !== "string") {
-    console.error("Invalid input for extractLinks:", text);
-    return []; // Return empty array if input is invalid
-  }
-
-  // Regular expression to match URLs in the response text
-  const regex = /https?:\/\/[^\s]+/g;
-  const links = text.match(regex) || []; // Extract links or return empty array
-
-  // Return an array of objects with the link, title, and favicon
-  return links.map((link) => {
-    const domain = link.replace(/(^\w+:|^)\/\//, "").replace("www.", "");
-    const parts = domain.split(".");
-    let title = parts.length > 2 ? parts[1] : parts[0]; // Get the domain title
-    title = title.charAt(0).toUpperCase() + title.slice(1); // Capitalize the title
-    const favicon = `https://www.google.com/s2/favicons?sz=64&domain_url=${link}`; // Favicon URL
-
-    return { link, title, favicon }; // Return an object with link data
-  });
-}
-
 export const searchJobsWithPuppeteer = async (req, res) => {
   let { location } = req.body; // Get location from request body
   const ip = req.ip; // Get the user's IP address
@@ -197,50 +172,6 @@ export const searchJobsWithPuppeteer = async (req, res) => {
     res.status(500).json({ error: "Internal Server Error" });
   }
 };
-
-async function fetchJobDetailsFromPdf(formattedText) {
-  const skillMessage = {
-    role: "system",
-    content:
-      "Extract a single eligible job title, location (city), and experience level from the following resume text. Return the result as JSON in the format { 'jobTitle': '<title>', 'location': '<city>', 'experience level': '<level>' }. Do not send anything else.",
-  };
-
-  const userMessage = {
-    role: "user",
-    content: formattedText,
-  };
-
-  try {
-    const response = await axios.post(
-      `${CLOUDFLARE_BASE_URL}${process.env.LLAMA_END_POINT}`,
-      { messages: [skillMessage, userMessage] },
-      { headers: AUTHORIZATION_HEADER }
-    );
-
-    // Log the raw response
-    console.log("Raw response from AI:", response.data);
-
-    // Extract the response text from the result
-    const responseText = response.data.result.response;
-
-    // Attempt to parse the response text directly as JSON
-    const parsedData = JSON.parse(responseText);
-
-    // Log the parsed data for debugging
-    console.log("Parsed job details from AI response:", parsedData);
-
-    // Extract and return the job details
-    const {
-      jobTitle,
-      location,
-      "experience level": experienceLevel,
-    } = parsedData;
-    return { jobTitle, location, experienceLevel };
-  } catch (error) {
-    console.error("Error fetching job details:", error.message);
-    throw new Error("Failed to fetch job details from the AI model.");
-  }
-}
 
 export const getAvailableJobs = async (req, res) => {
   try {

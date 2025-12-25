@@ -3,8 +3,9 @@ import {
   nameLocationJobTitlePrompt,
   skillExperienceLocationPrompt,
   nameLocationJobTitleExperiencePrompt,
+  jobDetailsPrompt,
 } from "../prompt/resumePrompt.mjs";
-import { fetchFromCloudflare } from "./cloud-flare/cloudFLare.mjs";
+import { fetchFromCloudflare } from "./ai/cloudFLare.mjs";
 import {
   extractJsonFromAiResponse,
   extractJsonFromText,
@@ -78,4 +79,24 @@ export const fetchNameLocationJobTitlesExperienceFromPdf = async (
       experience: parsed.experience,
     };
   });
+};
+
+export const fetchJobDetailsFromPdf = async (formattedText) => {
+  try {
+    const response = await fetchFromCloudflare([
+      jobDetailsPrompt,
+      { role: "user", content: formattedText },
+    ]);
+
+    const parsedData = extractJsonFromText(response.result.response);
+
+    return {
+      jobTitle: parsedData.jobTitle,
+      location: parsedData.location,
+      experienceLevel: parsedData["experience level"],
+    };
+  } catch (error) {
+    console.error("Error fetching job details:", error.message);
+    throw new Error("Failed to fetch job details from the AI model.");
+  }
 };
