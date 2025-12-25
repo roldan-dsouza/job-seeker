@@ -1,5 +1,4 @@
 import axios from "axios";
-import NodeCache from "node-cache";
 import { fork } from "child_process";
 import path from "path";
 import { fetchSkillsExperienceLocationFromPdf } from "../utils/userData.mjs";
@@ -9,27 +8,7 @@ import {
   createJobMessages,
   createSalaryMessages,
 } from "../prompt/resumePrompt.mjs";
-import { parsePdf } from "../utils/pdf-parser.mjs";
 import { fetchFromCloudflare } from "../services/cloudFLare.mjs";
-
-const cache = new NodeCache({ stdTTL: 3600 });
-
-// Main function to handle PDF processing
-export const pdfFunction = async (buffer, ip) => {
-  // Check cache
-  const cachedData = cache.get(ip);
-  if (cachedData) {
-    return cachedData; // Return cached data if available
-  }
-
-  // Parse the PDF file
-  const pdfData = await parsePdf(buffer);
-  const formattedText = pdfData.text.replace(/\n\n/g, "\n");
-
-  // Store in cache
-  cache.set(ip, formattedText); // Cache the processed text
-  return formattedText;
-};
 
 // Middleware for getting insights
 export const getInsights = async (req, res) => {
