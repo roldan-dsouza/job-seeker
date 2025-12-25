@@ -10,15 +10,9 @@ import {
   createSalaryMessages,
 } from "../prompt/resumePrompt.mjs";
 import { parsePdf } from "../utils/pdf-parser.mjs";
+import { fetchFromCloudflare } from "../services/cloudFLare.mjs";
 
 const cache = new NodeCache({ stdTTL: 3600 });
-
-// API Endpoint Constants
-const CLOUDFLARE_BASE_URL = `https://api.cloudflare.com/client/v4/accounts/${process.env.CLOUDFLARE_ACCOUNT_ID}/ai/run/`;
-const AUTHORIZATION_HEADER = {
-  Authorization: `Bearer ${process.env.CLOUDFLARE_TOKEN}`,
-  "Content-Type": "application/json",
-};
 
 // Main function to handle PDF processing
 export const pdfFunction = async (buffer, ip) => {
@@ -124,25 +118,6 @@ export const getSalaryRanges = async (req, res) => {
 };
 
 // ... [Rest of the functions remain unchanged]
-
-// Function to fetch data from Cloudflare API using Axios
-async function fetchFromCloudflare(messages) {
-  try {
-    const response = await axios.post(
-      `${CLOUDFLARE_BASE_URL}${process.env.LLAMA_END_POINT}`,
-      { messages },
-      { headers: AUTHORIZATION_HEADER }
-    );
-
-    return response.data;
-  } catch (error) {
-    console.error(
-      "Error fetching from Cloudflare:",
-      error.response?.data || error.message
-    );
-    return null;
-  }
-}
 
 // Function to fetch job links specifically
 async function fetchJobLinks(messages) {
