@@ -5,9 +5,9 @@ import {
   getJobLinks,
   getSalaryRanges,
   searchJobsWithPuppeteer,
-  upload,
-  validateFileType,
 } from "../controller/pdfController.mjs";
+import { upload } from "../services/multer.mjs";
+import { validateFileType } from "../helper/pdf.helper.mjs";
 
 const router = Router();
 
