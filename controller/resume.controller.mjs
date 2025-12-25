@@ -1,6 +1,6 @@
 import multer from "multer";
-import { fetchNameLocationJobTitlesExperienceFromPdf } from "../functions/userData.mjs";
-import { parsePdf } from "../functions/userData.mjs";
+import { fetchNameLocationJobTitlesExperienceFromPdf } from "../utils/userData.mjs";
+import { parsePdf } from "../utils/userData.mjs";
 import path from "path";
 import { fileURLToPath } from "url";
 import fs from "fs";

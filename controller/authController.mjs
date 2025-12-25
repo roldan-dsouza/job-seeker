@@ -1,21 +1,18 @@
 import { User } from "../model/user.mjs";
-import multer from "multer";
-import path from "path";
-import { fileURLToPath } from "url";
+
+
 import { createAccessToken, createRefreshToken } from "../jwtToken.mjs";
 import bcrypt from "bcrypt";
-import fs from "fs";
+
 import mongoose from "mongoose";
 import NodeCache from "node-cache";
-import { fetchNameLocationJobTitlesExperienceFromPdf } from "../functions/userData.mjs";
-import { parsePdf } from "../functions/userData.mjs";
+
 import { userSchema } from "../helper/authHelper.mjs";
 import { createOtp, verifyOtp } from "../utils/otp.mjs";
 import { sendOtpBrevo } from "../services/mail.mjs";
 const cache = new NodeCache();
 
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
+
 
 export const initialSignup = async (req, res) => {
   if (mongoose.connection.readyState !== 1) {
@@ -104,49 +101,7 @@ export const finalSignup = async (req, res) => {
   return res.status(201).json({ message: "User registered successfully" });
 };
 
-export const uploadResume = async (req, res) => {
-  if (!req.file) {
-    return res.status(400).json({ error: "PDF file is required" });
-  }
-  try {
-    const user = await User.findById(req.user.userid);
-    if (!user) {
-      return res.status(404).json({ error: "User with that ID doesn't exist" });
-    }
 
-    if (user.pdfAddress) {
-      fs.unlink(user.pdfAddress, (err) => {
-        if (err) console.error("Failed to delete old PDF:", err);
-      });
-    }
-
-    const pdfPath = req.file.path;
-    const pdfData = await parsePdf(pdfPath);
-    const formattedText = pdfData.text.replace(/\n\n/g, "\n");
-    const userData = await fetchNameLocationJobTitlesExperienceFromPdf(pdfPath);
-    console.log(userData);
-
-    // Update user document with new PDF and extracted data
-    await User.findByIdAndUpdate(
-      req.user.userid,
-      {
-        pdfAddress: pdfPath,
-        formattedText: formattedText,
-        userName: userData.name,
-        jobTitle: userData.jobTitle,
-        skills: userData.skills,
-        location: userData.location,
-        experience: userData.experience,
-      },
-      { new: true }
-    );
-
-    // Respond with success and extracted data
-    res.status(200).json({ pdfAddress: pdfPath, formattedText: formattedText });
-  } catch (error) {
-    res.status(500).json({ error: error.message });
-  }
-};
 
 export const login = async (req, res) => {
   const { email, password } = req.body;
@@ -196,20 +151,4 @@ export const forgotPassword = async (req, res) => {
   }
 };
 
-export const uploadMiddleware = multer({
-  storage: multer.diskStorage({
-    destination: (req, file, cb) => {
-      cb(null, path.join(__dirname, "../public/uploads"));
-    },
-    filename: (req, file, cb) => {
-      const uniqueName = Date.now() + "-" + Math.round(Math.random() * 1e9);
-      cb(null, uniqueName + path.extname(file.originalname));
-    },
-  }),
-  fileFilter: (req, file, cb) => {
-    if (file.mimetype !== "application/pdf") {
-      return cb(new Error("Only PDF files are allowed!"), false);
-    }
-    cb(null, true);
-  },
-}).single("pdfFile");
+

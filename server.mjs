@@ -8,7 +8,7 @@ import indexRouter from "./routes/index.mjs";
 import cors from "cors";
 import helmet from "helmet";
 import signedUserRouter from "./routes/signedInUser.mjs";
-import bodyParser from "body-parser";
+import resumeRouter from "./routes/resumes.routes.mjs";
 import StealthPlugin from "puppeteer-extra-plugin-stealth";
 import puppeteerExtra from "puppeteer-extra";
 
@@ -40,6 +40,7 @@ app.use(cookieParser());
 app.use(express.static(path.join(__dirname, "./public")));
 app.use("/api", indexRouter);
 app.use("/api/signed", signedUserRouter);
+app.use("/api/resume", resumeRouter);
 puppeteerExtra.use(StealthPlugin());
 
 app.listen(process.env.PORT, () => {

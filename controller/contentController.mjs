@@ -1,6 +1,6 @@
 import { User } from "../model/user.mjs";
 import { content } from "../model/content.mjs";
-import { generateContent } from "../functions/getContent.mjs";
+import { generateContent } from "../utils/getContent.mjs";
 
 export const getContent = async (req, res) => {
   const id = req.user.userid;

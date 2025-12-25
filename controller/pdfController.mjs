@@ -4,14 +4,9 @@ import axios from "axios";
 import NodeCache from "node-cache";
 import { fork } from "child_process";
 import path from "path";
-import { realpathSync } from "fs";
-import { error } from "console";
-import { getCityFromIP } from "../functions/geolocation.mjs";
-import {
-  fetchNameLocationAndJobTitleFromPdf,
-  fetchSkillsExperienceLocationFromPdf,
-} from "../functions/userData.mjs";
-import { searchAndScrapeJobDetails } from "../functions/searchJobs.mjs";
+
+import { fetchSkillsExperienceLocationFromPdf } from "../utils/userData.mjs";
+import { searchAndScrapeJobDetails } from "../utils/searchJobs.mjs";
 
 // Set up multer storage in memory
 const storage = multer.memoryStorage();
