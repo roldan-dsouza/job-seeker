@@ -73,3 +73,44 @@ Rules:
 - do NOT return anything outside JSON
 `.trim(),
 };
+
+export const skillExperienceLocationPrompt = {
+  role: "system",
+  content: `
+Extract only:
+- primary skill (general job name, not framework)
+- experience level (beginner | intermediate | senior)
+- location (city name, else state)
+
+Return STRICT JSON:
+{
+  "skills": "<one primary skill>",
+  "experience": "<beginner | intermediate | senior>",
+  "location": "<city or state>"
+}
+
+Rules:
+- only ONE skill
+- no extra text
+`.trim(),
+};
+
+export const nameLocationJobTitleExperiencePrompt = {
+  role: "system",
+  content: `
+Extract ONLY the following fields and return STRICT JSON:
+
+{
+  "name": "<person's name>",
+  "location": "<city>",
+  "jobTitle": "<job title>",
+  "skills": ["<skills from resume>"],
+  "experience": "<beginner | intermediate | senior>"
+}
+
+Rules:
+- jobTitle = role they can apply for (NOT skill)
+- be strict
+- no extra output
+`.trim(),
+};

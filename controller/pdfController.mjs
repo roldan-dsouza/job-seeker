@@ -8,12 +8,12 @@ import {
   createJobMessages,
   createSalaryMessages,
 } from "../prompt/resumePrompt.mjs";
-import { fetchFromCloudflare } from "../services/cloud-flare/cloudFLare.mjs";
+import { fetchFromCloudflare } from "../services/ai/cloudFLare.mjs";
 import { pdfFunction } from "../utils/pdf-functions.mjs";
 import {
   fetchJobLinks,
   fetchSalaryRanges,
-} from "../services/cloud-flare/job-scrapeServices.mjs";
+} from "../services/ai/job-scrapeServices.mjs";
 
 // Middleware for getting insights
 export const getInsights = async (req, res) => {

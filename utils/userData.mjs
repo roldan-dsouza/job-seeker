@@ -1,5 +1,5 @@
 import axios from "axios";
-import { nameLocationJobTitlePrompt } from "../prompt/resumePrompt.mjs";
+import { withRetry } from "./retry.mjs";
 import { pdfFunction } from "./pdf-functions.mjs";
 const CLOUDFLARE_BASE_URL = `https://api.cloudflare.com/client/v4/accounts/${process.env.CLOUDFLARE_ACCOUNT_ID}/ai/run/`;
 const AUTHORIZATION_HEADER = {
@@ -15,6 +15,12 @@ export const extractJsonFromAiResponse = (responseText) => {
   }
 
   return JSON.parse(jsonMatch[0]);
+};
+
+export const extractJsonFromText = (text) => {
+  const match = text.match(/{[\s\S]*}/);
+  if (!match) throw new Error("JSON not found");
+  return JSON.parse(match[0].replace(/'/g, '"'));
 };
 
 export async function fetchSkillsExperienceLocationFromPdf(formattedText) {
