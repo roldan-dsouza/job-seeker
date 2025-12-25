@@ -14,7 +14,9 @@ import {
   fetchSalaryRanges,
 } from "../services/ai/job-scrapeServices.mjs";
 import { extractLinks } from "../services/ai/job-scrapeServices.mjs";
-import { fetchJobDetailsFromPdf } from "../services/resumeExtractService.mjs";
+import { fetchJobDetailsFromPdf } from "../services/resume/resumeExtractService.mjs";
+import { getResumeText } from "../services/resume/resumeTextService.mjs";
+import { runJobSearch } from "../services/jobs/puppeteerSearch.mjs";
 
 // Middleware for getting insights
 export const getInsights = async (req, res) => {
@@ -103,73 +105,35 @@ export const getSalaryRanges = async (req, res) => {
 };
 
 export const searchJobsWithPuppeteer = async (req, res) => {
-  let { location } = req.body; // Get location from request body
-  const ip = req.ip; // Get the user's IP address
-
   try {
-    let formattedText;
-    if (req.file) {
-      // If a file is uploaded, extract data from it
-      formattedText = await pdfFunction(req.file.buffer, ip);
-    } else {
-      // If no file is uploaded, check the cache
-      const cachedData = cache.get(ip);
-      if (!cachedData) {
-        return res
-          .status(400)
-          .json({ error: "No PDF uploaded and no cached data available." });
-      }
-      formattedText = cachedData;
-    }
+    let { location } = req.body;
+    const ip = req.ip;
 
-    // Fetch skill and experience level using the AI function
-    const result = await fetchJobDetailsFromPdf(formattedText);
-    if (location === "onlocation") location = result.location;
-    console.log(result);
-    if (!skill || !experienceLevel) {
-      return res
-        .status(400)
-        .json({ error: "Failed to extract skill and experience level." });
-    }
+    const formattedText = await getResumeText({ file: req.file, ip });
+    const {
+      jobTitle,
+      experienceLevel,
+      location: aiLocation,
+    } = await fetchJobDetailsFromPdf(formattedText);
 
-    const jobSearchScript = path.resolve("./scrap.mjs");
-    console.log(
-      "Forking child process with arguments:",
-      skill,
+    if (location === "onlocation") location = aiLocation;
+
+    const jobs = await runJobSearch({
+      skill: jobTitle,
       location,
-      experienceLevel
-    );
-
-    const child = fork(jobSearchScript, [skill, location, experienceLevel]);
-
-    child.on("message", (jobResults) => {
-      console.log("Job results from child process:", jobResults); // Debug log
-
-      if (jobResults.status === "success") {
-        return res.status(200).json({ jobs: jobResults.data });
-      } else {
-        return res.status(500).json({
-          error: jobResults.error || "Failed to fetch job listings.",
-        });
-      }
+      experienceLevel,
     });
 
-    child.on("error", (error) => {
-      console.error("Error in child process:", error);
-      res.status(500).json({
-        error: "Failed to fetch job listings due to child process error.",
-      });
-    });
-
-    child.on("exit", (code) => {
-      if (code !== 0) {
-        console.error(`Child process exited with code ${code}`);
-        res.status(500).json({ error: "Child process exited with an error." });
-      }
-    });
+    return res.status(200).json({ jobs });
   } catch (error) {
-    console.error("Error in searchJobsWithPuppeteer:", error.message);
-    res.status(500).json({ error: "Internal Server Error" });
+    if (error.message === "NO_RESUME_DATA") {
+      return res.status(400).json({
+        error: "No PDF uploaded and no cached data available.",
+      });
+    }
+
+    console.error("searchJobsWithPuppeteer:", error.message);
+    return res.status(500).json({ error: "Internal Server Error" });
   }
 };
 

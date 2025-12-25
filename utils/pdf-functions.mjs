@@ -1,7 +1,7 @@
 import pdfParser from "pdf-parser";
 import NodeCache from "node-cache";
 
-const cache = new NodeCache({ stdTTL: 3600 });
+export const cache = new NodeCache({ stdTTL: 3600 });
 
 // Function to parse the PDF using pdf-parser
 export async function parsePdf(buffer) {

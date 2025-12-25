@@ -1,16 +1,16 @@
-import { pdfFunction } from "../utils/pdf-functions.mjs";
+import { pdfFunction } from "../../utils/pdf-functions.mjs";
 import {
   nameLocationJobTitlePrompt,
   skillExperienceLocationPrompt,
   nameLocationJobTitleExperiencePrompt,
   jobDetailsPrompt,
-} from "../prompt/resumePrompt.mjs";
-import { fetchFromCloudflare } from "./ai/cloudFLare.mjs";
+} from "../../prompt/resumePrompt.mjs";
+import { fetchFromCloudflare } from "../ai/cloudFLare.mjs";
 import {
   extractJsonFromAiResponse,
   extractJsonFromText,
-} from "../utils/userData.mjs";
-import { withRetry } from "../utils/retry.mjs";
+} from "../../utils/userData.mjs";
+import { withRetry } from "../../utils/retry.mjs";
 
 export const fetchNameLocationAndJobTitleFromPdf = async (buffer, ip) => {
   const formattedText = await pdfFunction(buffer, ip);
