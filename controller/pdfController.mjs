@@ -1,5 +1,3 @@
-import { fork } from "child_process";
-import path from "path";
 import { fetchSkillsExperienceLocationFromPdf } from "../utils/userData.mjs";
 import { searchAndScrapeJobDetails } from "../utils/searchJobs.mjs";
 import {
@@ -16,7 +14,7 @@ import {
 import { extractLinks } from "../services/ai/job-scrapeServices.mjs";
 import { fetchJobDetailsFromPdf } from "../services/resume/resumeExtractService.mjs";
 import { getResumeText } from "../services/resume/resumeTextService.mjs";
-import { runJobSearch } from "../services/jobs/puppeteerSearch.mjs";
+import { runJobSearch } from "../services/jobs/jobSearchFork.mjs";
 
 // Middleware for getting insights
 export const getInsights = async (req, res) => {

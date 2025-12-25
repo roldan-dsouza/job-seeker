@@ -1,101 +1,90 @@
 import puppeteerExtra from "puppeteer-extra";
 import StealthPlugin from "puppeteer-extra-plugin-stealth";
 
-// Use the stealth plugin to prevent detection
 puppeteerExtra.use(StealthPlugin());
+
+const PUPPETEER_ARGS = [
+  "--disable-setuid-sandbox",
+  "--no-sandbox",
+  "--no-zygote",
+  "--single-process",
+  "--disable-software-rasterizer",
+];
+
+const GOOGLE_JOBS_SELECTOR = ".jRKCUd .ZFiwCf";
+const JOB_LIST_SELECTOR = ".u9g6vf";
 
 export async function searchAndScrapeJobDetails(
   skill,
   location,
   experienceLevel
 ) {
-  let response = { success: false, data: [], error: null };
-  let browser = null;
+  let browser;
 
   try {
     console.log(
-      `Searching for job recommendations for: ${skill} in ${location} with ${experienceLevel} experience`
+      `[PUPPETEER] Searching jobs for "${skill}" in "${location}" (${experienceLevel})`
     );
 
-    // Launch Puppeteer using puppeteer-extra with stealth
     browser = await puppeteerExtra.launch({
-      headless: true, // Set headless to true (hidden mode)
-      args: [
-        "--disable-setuid-sandbox",
-        "--no-sandbox",
-        "--no-zygote",
-        "--single-process",
-        "--disable-software-rasterizer",
-      ],
+      headless: true,
+      args: PUPPETEER_ARGS,
     });
 
     const page = await browser.newPage();
+    page.setDefaultTimeout(30_000);
+
     const query = `${skill} jobs in ${location} with ${experienceLevel} experience`;
-    const googleJobsUrl = `https://www.google.com/search?q=${encodeURIComponent(
+    const searchUrl = `https://www.google.com/search?q=${encodeURIComponent(
       query
     )}`;
 
-    // Navigate to the Google Jobs search results page
-    await page.goto(googleJobsUrl, {
-      waitUntil: "networkidle2",
-      timeout: 30000,
-    });
+    await page.goto(searchUrl, { waitUntil: "networkidle2" });
 
-    // Wait for the "Google Jobs" section to load and click it
-    await page.waitForSelector(".jRKCUd .ZFiwCf", { timeout: 30000 });
-    const element = await page.$(".jRKCUd .ZFiwCf");
-    await element.click();
-    await page.waitForNavigation({ waitUntil: "networkidle0", timeout: 30000 });
+    // Open Google Jobs panel
+    await page.waitForSelector(GOOGLE_JOBS_SELECTOR);
+    await page.click(GOOGLE_JOBS_SELECTOR);
+    await page.waitForNavigation({ waitUntil: "networkidle0" });
 
-    // Wait for the job listings to load
-    await page.waitForSelector(".u9g6vf", { timeout: 30000 });
-    const jobElements = await page.$$(".u9g6vf");
-    const jobDetails = [];
+    await page.waitForSelector(JOB_LIST_SELECTOR);
+    const jobButtons = await page.$$(JOB_LIST_SELECTOR);
 
-    // Iterate through job elements to extract job information
-    for (let jobButton of jobElements) {
+    const jobs = [];
+
+    for (const jobButton of jobButtons.slice(0, 15)) {
       await jobButton.click();
-      await new Promise((resolve) => setTimeout(resolve, 2000)); // Wait for the details to load
+      await page.waitForTimeout(1500);
 
-      const titleElement = await page.$(".LZAQDf.cS4Vcb-pGL6qe-IRrXtf");
-      const companyElement = await page.$(".UxTHrf");
-      const imageElement = await page.$(".YQ4gaf.zr758c"); // Adjusted to match the class name
-      let imageUrl = null;
+      const jobData = await page.evaluate(() => {
+        const titleEl = document.querySelector(".LZAQDf.cS4Vcb-pGL6qe-IRrXtf");
+        const companyEl = document.querySelector(".UxTHrf");
+        const imageEl = document.querySelector(".YQ4gaf.zr758c");
 
-      // Extract image URL if exists
-      if (imageElement) {
-        imageUrl = await page.evaluate((el) => el.src, imageElement);
+        return {
+          title: titleEl?.innerText || null,
+          company: companyEl?.innerText || null,
+          imageUrl: imageEl?.src || null,
+        };
+      });
+
+      if (jobData.title && jobData.company) {
+        jobs.push(jobData);
       }
 
-      // Extract job title and company name
-      if (titleElement && companyElement) {
-        const jobTitle = await page.evaluate((el) => el.innerText, titleElement);
-        const companyName = await page.evaluate(
-          (el) => el.innerText,
-          companyElement
-        );
-        jobDetails.push({ title: jobTitle, company: companyName, imageUrl });
-      }
-
-      await page.goBack();
-      await new Promise((resolve) => setTimeout(resolve, 1000)); // Wait for the job list to load again
+      await page.goBack({ waitUntil: "networkidle0" });
     }
 
-    // Remove duplicate job entries by company name
-    const uniqueJobDetails = Array.from(
-      new Map(jobDetails.map((job) => [job.company, job])).values()
+    // Deduplicate by company name
+    const uniqueJobs = Array.from(
+      new Map(jobs.map((job) => [job.company, job])).values()
     );
 
-    response.success = true;
-    response.data = uniqueJobDetails.slice(0, 10); // Return top 10 results
-    return response;
+    return uniqueJobs.slice(0, 10);
   } catch (error) {
-    console.error("Error during job scraping:", error);
-    response.error = "Failed to fetch job details.";
-    return response;
+    console.error("[PUPPETEER ERROR]", error.message);
+    throw new Error("JOB_SCRAPING_FAILED");
   } finally {
-    // Ensure the browser is always closed, even if an error occurs
-    if (browser !== null) {
+    if (browser) {
       await browser.close();
     }
   }
