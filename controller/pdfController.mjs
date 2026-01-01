@@ -19,28 +19,45 @@ import { runJobSearch } from "../services/jobs/jobSearchFork.mjs";
 
 // Middleware for getting insights
 export const getInsights = async (req, res) => {
-  const ip = req.ip;
-  if (!req.file && !cache.get(ip)) {
-    return res.status(400).json({ error: "No file uploaded" });
-  }
+  const ip =
+    req.headers["x-forwarded-for"]?.split(",")[0] || req.socket.remoteAddress;
+
   try {
+    const cachedText = cache.get(ip);
+
+    if (!req.file && !cachedText) {
+      return res.status(400).json({
+        success: false,
+        message: "Resume file is required",
+        code: "NO_FILE",
+      });
+    }
+
     const formattedText = req.file
       ? await pdfFunction(req.file.buffer, ip)
-      : cache.get(ip);
-    const insightsMessages = createInsightsMessages(formattedText);
-    const insights = await fetchFromCloudflare(insightsMessages);
+      : cachedText;
 
-    if (!insights) {
-      return res.status(500).json({ error: "Failed to fetch insights" });
+    const insights = await insightsService.getInsights(formattedText);
+
+    if (insights.status === "INVALID_RESUME") {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid resume",
+        code: "INVALID_RESUME",
+      });
     }
-    if (insights.result.response == "invalid resume")
-      return res.status(400).json({ error: "invalid resume" });
-    res.status(200).json({ insights: insights.result.response });
+
+    return res.status(200).json({
+      success: true,
+      data: insights.data,
+    });
   } catch (error) {
-    console.error("Error fetching insights:", error);
-    res.status(500).json({
-      error: "Failed to fetch insights",
-      details: error.message,
+    console.error("getInsights error", { ip, error });
+
+    return res.status(500).json({
+      success: false,
+      message: "Internal server error",
+      code: "INSIGHTS_ERROR",
     });
   }
 };

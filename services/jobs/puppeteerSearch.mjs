@@ -3,17 +3,6 @@ import StealthPlugin from "puppeteer-extra-plugin-stealth";
 
 puppeteerExtra.use(StealthPlugin());
 
-const PUPPETEER_ARGS = [
-  "--disable-setuid-sandbox",
-  "--no-sandbox",
-  "--no-zygote",
-  "--single-process",
-  "--disable-software-rasterizer",
-];
-
-const GOOGLE_JOBS_SELECTOR = ".jRKCUd .ZFiwCf";
-const JOB_LIST_SELECTOR = ".u9g6vf";
-
 export async function searchAndScrapeJobDetails(
   skill,
   location,
@@ -23,69 +12,116 @@ export async function searchAndScrapeJobDetails(
 
   try {
     console.log(
-      `[PUPPETEER] Searching jobs for "${skill}" in "${location}" (${experienceLevel})`
+      `[BING] Searching jobs for "${skill}" in "${location}" (${experienceLevel})`
     );
 
     browser = await puppeteerExtra.launch({
-      headless: true,
-      args: PUPPETEER_ARGS,
+      headless: false, // keep false until you trust it
+      args: [
+        "--no-sandbox",
+        "--disable-setuid-sandbox",
+        "--disable-dev-shm-usage",
+      ],
     });
 
     const page = await browser.newPage();
-    page.setDefaultTimeout(30_000);
+    page.setDefaultTimeout(30000);
 
-    const query = `${skill} jobs in ${location} with ${experienceLevel} experience`;
-    const searchUrl = `https://www.google.com/search?q=${encodeURIComponent(
-      query
-    )}`;
+    const query = `${skill} jobs mangalore`;
+    const url = `https://www.bing.com/jobs?q=${encodeURIComponent(query)}`;
 
-    await page.goto(searchUrl, { waitUntil: "networkidle2" });
+    await page.goto(url, { waitUntil: "networkidle2" });
 
-    // Open Google Jobs panel
-    await page.waitForSelector(GOOGLE_JOBS_SELECTOR);
-    await page.click(GOOGLE_JOBS_SELECTOR);
-    await page.waitForNavigation({ waitUntil: "networkidle0" });
-
-    await page.waitForSelector(JOB_LIST_SELECTOR);
-    const jobButtons = await page.$$(JOB_LIST_SELECTOR);
+    // Wait for job list
+    await page.waitForSelector("ul.b_hList li", { timeout: 20000 });
 
     const jobs = [];
 
-    for (const jobButton of jobButtons.slice(0, 15)) {
-      await jobButton.click();
-      await page.waitForTimeout(1500);
-
-      const jobData = await page.evaluate(() => {
-        const titleEl = document.querySelector(".LZAQDf.cS4Vcb-pGL6qe-IRrXtf");
-        const companyEl = document.querySelector(".UxTHrf");
-        const imageEl = document.querySelector(".YQ4gaf.zr758c");
-
-        return {
-          title: titleEl?.innerText || null,
-          company: companyEl?.innerText || null,
-          imageUrl: imageEl?.src || null,
-        };
-      });
-
-      if (jobData.title && jobData.company) {
-        jobs.push(jobData);
-      }
-
-      await page.goBack({ waitUntil: "networkidle0" });
-    }
-
-    // Deduplicate by company name
-    const uniqueJobs = Array.from(
-      new Map(jobs.map((job) => [job.company, job])).values()
+    const jobCount = await page.evaluate(
+      () => document.querySelectorAll("ul.b_hList li").length
     );
 
-    return uniqueJobs.slice(0, 10);
+    for (let i = 0; i < jobCount && jobs.length < 10; i++) {
+      try {
+        // Click job card SAFELY (no stale handles)
+        await page.evaluate((index) => {
+          const items = document.querySelectorAll("ul.b_hList li");
+          if (items[index]) items[index].click();
+        }, i);
+
+        // Wait for right panel header to update
+        await page.waitForFunction(
+          () => {
+            const h = document.querySelector("h1, h2");
+            return h && h.innerText.length > 5;
+          },
+          { timeout: 10000 }
+        );
+
+        const jobData = await page.evaluate(() => {
+          // Get ALL headings and choose the FIRST valid one
+          const headings = Array.from(document.querySelectorAll("h1, h2"));
+
+          const titleEl = headings.find(
+            (h) =>
+              h.innerText &&
+              !h.innerText.toLowerCase().includes("requirements") &&
+              !h.innerText.toLowerCase().includes("overview") &&
+              h.innerText.length > 5
+          );
+
+          const title = titleEl?.innerText?.trim() || null;
+
+          // Company is usually a nearby span (but NOT language tags)
+          const spans = Array.from(document.querySelectorAll("span"));
+          const company =
+            spans.find(
+              (s) =>
+                s.innerText &&
+                s.innerText.length > 2 &&
+                s.innerText.length < 50 &&
+                !["english", "requirements"].includes(s.innerText.toLowerCase())
+            )?.innerText || null;
+
+          // Location (best effort)
+          const location =
+            spans.find((s) => s.innerText?.toLowerCase().includes("remote"))
+              ?.innerText || null;
+
+          // Apply / external link
+          const link =
+            Array.from(document.querySelectorAll('a[href^="http"]')).find(
+              (a) =>
+                !a.href.includes("bing.com") && !a.href.includes("javascript")
+            )?.href || null;
+
+          return { title, company, location, link };
+        });
+
+        // FINAL HARD FILTER (NO MERCY)
+        if (
+          !jobData.title ||
+          !jobData.company ||
+          jobData.title.toLowerCase().includes("requirements") ||
+          jobData.company.toLowerCase() === "english"
+        ) {
+          continue;
+        }
+
+        jobs.push(jobData);
+      } catch {
+        // swallow errors, move on
+        continue;
+      }
+    }
+
+    console.log(`[BING] Jobs found: ${jobs.length}`);
+
+    return jobs;
   } catch (error) {
-    console.error("[PUPPETEER ERROR]", error.message);
+    console.error("[BING ERROR]", error.message);
     throw new Error("JOB_SCRAPING_FAILED");
   } finally {
-    if (browser) {
-      await browser.close();
-    }
+    if (browser) await browser.close();
   }
 }
