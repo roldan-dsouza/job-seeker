@@ -111,36 +111,44 @@ export const finalSignup = async (req, res) => {
 };
 
 export const login = async (req, res) => {
-  const { email, password } = req.body;
-
   try {
-    const user = await User.findOne({ email });
-    if (!user) {
-      return res.status(401).json({ error: "Invalid email or password" });
+    let { email, password } = req.body;
+
+    if (!email || !password) {
+      return res.status(400).json({
+        success: false,
+        message: "Email and password are required",
+        code: "MISSING_FIELDS",
+      });
     }
 
-    const isPasswordValid = await bcrypt.compare(password, user.password);
-    if (!isPasswordValid) {
-      return res.status(401).json({ error: "Invalid email or password" });
+    email = email.toLowerCase().trim();
+
+    const result = await authService.login(email, password);
+
+    if (!result.success) {
+      return res.status(401).json(result.response);
     }
 
-    const payload = {
-      _id: user._id,
-      email: user.email,
-    };
-
-    const accessToken = await createAccessToken(payload);
-    const refreshToken = await createRefreshToken(payload, res);
-
-    res.cookie("access_token", accessToken, {
+    res.cookie("access_token", result.accessToken, {
       httpOnly: true,
       secure: process.env.NODE_ENV === "production",
-      maxAge: 15 * 60 * 1000 * 8,
+      sameSite: "strict",
+      maxAge: 15 * 60 * 1000,
     });
 
-    return res.status(200).json({ message: "Login successful" });
+    return res.status(200).json({
+      success: true,
+      message: "Login successful",
+    });
   } catch (error) {
-    return res.status(500).json({ error: error.message });
+    console.error("login controller error:", error);
+
+    return res.status(500).json({
+      success: false,
+      message: "Internal server error",
+      code: "LOGIN_ERROR",
+    });
   }
 };
 

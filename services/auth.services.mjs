@@ -87,3 +87,39 @@ export const completeSignup = async (email, otp) => {
     refreshToken,
   };
 };
+
+export const login = async (email, password) => {
+  const user = await User.findOne({ email }).select("+password");
+  if (!user) {
+    return {
+      success: false,
+      response: {
+        success: false,
+        message: "Invalid email or password",
+        code: "INVALID_CREDENTIALS",
+      },
+    };
+  }
+
+  const isValid = await bcrypt.compare(password, user.password);
+  if (!isValid) {
+    return {
+      success: false,
+      response: {
+        success: false,
+        message: "Invalid email or password",
+        code: "INVALID_CREDENTIALS",
+      },
+    };
+  }
+
+  const payload = { _id: user._id, email: user.email };
+
+  const accessToken = await createAccessToken(payload);
+  await createRefreshToken(payload); // cookie handled inside
+
+  return {
+    success: true,
+    accessToken,
+  };
+};
