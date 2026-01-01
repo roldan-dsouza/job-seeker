@@ -1,6 +1,5 @@
 import { User } from "../model/user.mjs";
-
-
+import * as authService from "../services/auth.services.mjs";
 import { createAccessToken, createRefreshToken } from "../jwtToken.mjs";
 import bcrypt from "bcrypt";
 
@@ -12,48 +11,65 @@ import { createOtp, verifyOtp } from "../utils/otp.mjs";
 import { sendOtpBrevo } from "../services/mail.mjs";
 const cache = new NodeCache();
 
-
-
 export const initialSignup = async (req, res) => {
-  if (mongoose.connection.readyState !== 1) {
-    return res
-      .status(500)
-      .json({ error: "Database connection issue. Please try again later." });
-  }
-  const { password, confirmPassword, email } = req.body;
   try {
-    await userSchema.validateAsync({
-      password,
-      confirmPassword,
-      email,
+    if (mongoose.connection.readyState !== 1) {
+      return res.status(503).json({
+        success: false,
+        message: "Service unavailable",
+        code: "DB_DOWN",
+      });
+    }
+
+    let { password, confirmPassword, email } = req.body;
+
+    // normalize email
+    email = email.toLowerCase().trim();
+
+    await userSchema.validateAsync({ password, confirmPassword, email });
+
+    const userExists = await User.exists({ email });
+    if (userExists) {
+      return res.status(409).json({
+        success: false,
+        message: "Email already registered",
+        code: "EMAIL_EXISTS",
+      });
+    }
+
+    const otpInitiated = await authService.generateSignupOtp(email, password);
+
+    if (!otpInitiated) {
+      return res.status(500).json({
+        success: false,
+        message: "Failed to initiate signup",
+        code: "OTP_INIT_FAILED",
+      });
+    }
+
+    return res.status(200).json({
+      success: true,
+      message: "OTP sent successfully",
     });
-
-    const existingUser = await User.findOne({ email });
-    if (existingUser) {
-      return res.status(409).json({ error: "Email already registered" });
-    }
-
-    //generate OTP and validate
-    const otp = createOtp(email);
-    if (!otp) {
-      return res.status(500).json({ error: "Failed to generate OTP" });
-    }
-
-    const otpSent = await sendOtpBrevo(process.env.EMAIL_USER, email, otp);
-    if (!otpSent) {
-      return res.status(500).json({ error: "Failed to send OTP" });
-    }
-    cache.set(email, {
-      password,
-    });
-    return res
-      .status(200)
-      .json({ message: "OTP sent successfully, please verify." });
   } catch (error) {
     if (error.isJoi) {
-      return res.status(400).json({ error: error.details[0].message });
+      return res.status(400).json({
+        success: false,
+        message: "Invalid signup details",
+        code: "VALIDATION_ERROR",
+      });
     }
-    return res.status(500).json({ error: error.message });
+
+    console.error("initialSignup error:", {
+      error: error.message,
+      stack: error.stack,
+    });
+
+    return res.status(500).json({
+      success: false,
+      message: "Internal server error",
+      code: "SIGNUP_ERROR",
+    });
   }
 };
 
@@ -100,8 +116,6 @@ export const finalSignup = async (req, res) => {
   cache.del(email);
   return res.status(201).json({ message: "User registered successfully" });
 };
-
-
 
 export const login = async (req, res) => {
   const { email, password } = req.body;
@@ -150,5 +164,3 @@ export const forgotPassword = async (req, res) => {
     });
   }
 };
-
-
