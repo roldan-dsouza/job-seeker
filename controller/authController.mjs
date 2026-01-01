@@ -7,8 +7,6 @@ import mongoose from "mongoose";
 import NodeCache from "node-cache";
 
 import { userSchema } from "../helper/authHelper.mjs";
-import { createOtp, verifyOtp } from "../utils/otp.mjs";
-import { sendOtpBrevo } from "../services/mail.mjs";
 const cache = new NodeCache();
 
 export const initialSignup = async (req, res) => {
@@ -74,47 +72,42 @@ export const initialSignup = async (req, res) => {
 };
 
 export const finalSignup = async (req, res) => {
-  const { email, otp } = req.body;
+  try {
+    const { email, otp } = req.body;
 
-  if (!email || !otp) {
-    return res.status(400).json({ error: "missing fields email or otp" });
+    if (!email || !otp) {
+      return res.status(400).json({
+        success: false,
+        message: "Email and OTP are required",
+        code: "MISSING_FIELDS",
+      });
+    }
+
+    const result = await authService.completeSignup(email, otp);
+
+    if (!result.success) {
+      return res.status(result.status).json(result.response);
+    }
+
+    res.cookie("access_token", result.accessToken, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+      sameSite: "strict",
+      maxAge: 15 * 60 * 1000,
+    });
+
+    return res.status(201).json({
+      success: true,
+      message: "User registered successfully",
+    });
+  } catch (err) {
+    console.error("finalSignup controller error:", err);
+    return res.status(500).json({
+      success: false,
+      message: "Internal server error",
+      code: "FINAL_SIGNUP_ERROR",
+    });
   }
-
-  const userData = cache.get(email);
-  const otpValid = await verifyOtp(email, otp);
-
-  if (!userData) {
-    return res.status(400).json({ error: "User data not found or expired" });
-  }
-  if (otpValid.valid == false) {
-    cache.del(email);
-    return res.status(400).json({ error: otpValid.message });
-  }
-
-  const hashedPassword = await bcrypt.hash(userData.password, 10);
-  const newUser = new User({
-    email: email,
-    password: hashedPassword,
-  });
-
-  await newUser.save();
-
-  const payload = {
-    _id: newUser._id,
-    email: newUser.email,
-  };
-
-  const accessToken = await createAccessToken(payload);
-  const refreshToken = await createRefreshToken(payload, res);
-
-  res.cookie("access_token", accessToken, {
-    httpOnly: true,
-    secure: process.env.NODE_ENV === "production",
-    maxAge: 15 * 60 * 1000 * 8,
-  });
-
-  cache.del(email);
-  return res.status(201).json({ message: "User registered successfully" });
 };
 
 export const login = async (req, res) => {
