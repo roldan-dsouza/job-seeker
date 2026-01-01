@@ -1,5 +1,6 @@
 import { fetchSkillsExperienceLocationFromPdf } from "../utils/userData.mjs";
-import { searchAndScrapeJobDetails } from "../utils/searchJobs.mjs";
+import { searchAndScrapeJobDetails } from "../services/jobs/puppeteerSearch.mjs";
+
 import {
   createInsightsMessages,
   createJobMessages,
