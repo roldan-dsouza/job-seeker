@@ -1,4 +1,3 @@
-import { User } from "../model/user.mjs";
 import { content } from "../model/content.mjs";
 import { generateContent } from "../utils/getContent.mjs";
 

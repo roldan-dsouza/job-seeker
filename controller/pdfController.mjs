@@ -2,11 +2,9 @@ import { fetchSkillsExperienceLocationFromPdf } from "../utils/userData.mjs";
 import { searchAndScrapeJobDetails } from "../services/jobs/puppeteerSearch.mjs";
 
 import {
-  createInsightsMessages,
   createJobMessages,
   createSalaryMessages,
 } from "../prompt/resumePrompt.mjs";
-import { fetchFromCloudflare } from "../services/ai/cloudFLare.mjs";
 import { pdfFunction } from "../utils/pdf-functions.mjs";
 import {
   fetchJobLinks,
