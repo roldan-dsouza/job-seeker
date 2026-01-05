@@ -14,6 +14,7 @@ import { extractLinks } from "../services/ai/job-scrapeServices.mjs";
 import { fetchJobDetailsFromPdf } from "../services/resume/resumeExtractService.mjs";
 import { getResumeText } from "../services/resume/resumeTextService.mjs";
 import { runJobSearch } from "../services/jobs/jobSearchFork.mjs";
+import { scrapeIndeed } from "../services/jobs/playwright.search.mjs";
 
 // Middleware for getting insights
 export const getInsights = async (req, res) => {
@@ -206,11 +207,7 @@ export const getAvailableJobs = async (req, res) => {
       location = location + " or remote";
     }
     console.log(location);
-    const jobDetails = await searchAndScrapeJobDetails(
-      skills,
-      location,
-      experience
-    );
+    const jobDetails = await scrapeIndeed(skills, location);
 
     if (!jobDetails || jobDetails.length === 0) {
       return res

@@ -23,14 +23,13 @@ mongoose
     error: error.message;
   });
 
-//app.use(express.urlencoded({ extended: true }));
 const corsOptions = {
   origin: function (origin, callback) {
-    callback(null, true); // Allow any origin (passing null allows dynamic origin)
+    callback(null, true);
   },
   methods: ["GET", "POST", "PUT", "DELETE"],
   allowedHeaders: ["Content-Type", "Authorization"],
-  credentials: true, // Allow credentials (cookies, authorization headers)
+  credentials: true,
 };
 
 app.use(cors(corsOptions));

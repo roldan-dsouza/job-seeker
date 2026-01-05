@@ -35,6 +35,7 @@
     "passport": "^0.7.0",
     "pdf-parse": "^1.1.1",
     "pdf-parser": "^1.0.5",
+    "playwright": "^1.57.0",
     "puppeteer": "^23.6.0",
     "puppeteer-extra": "^3.3.6",
     "puppeteer-extra-plugin-stealth": "^2.11.2"
