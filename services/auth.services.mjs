@@ -1,5 +1,5 @@
 import bcrypt from "bcrypt";
-import cache from "../config/cache.js";
+import { cache } from "../utils/pdf-functions.mjs";
 import { createOtp } from "../utils/otp.mjs";
 import { sendOtpBrevo } from "./mail.mjs";
 
