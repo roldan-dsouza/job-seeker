@@ -155,7 +155,7 @@ export const searchJobsWithPuppeteer = async (req, res) => {
 export const getAvailableJobs = async (req, res) => {
   try {
     const ip = req.ip;
-
+    const { location } = req.query;
     if (!req.file && !cache.get(ip)) {
       return res
         .status(400)
@@ -167,13 +167,13 @@ export const getAvailableJobs = async (req, res) => {
         .status(415)
         .json({ error: "Unsupported file type. Only PDF files are allowed." });
     }
-    if (!req.body.location) {
+    if (!location) {
       return res
         .status(400)
         .json({ error: "Location is required in the request body" });
     }
     const validLocations = ["onlocation", "remote", "hybrid"];
-    if (!validLocations.includes(req.body.location)) {
+    if (!validLocations.includes(location)) {
       return res.status(422).json({
         error:
           "Invalid location. Accepted values are 'onlocation', 'remote', or 'hybrid'.",
@@ -188,9 +188,9 @@ export const getAvailableJobs = async (req, res) => {
     }
 
     const response = await fetchSkillsExperienceLocationFromPdf(formattedText);
-    let { skills, location, experience } = response;
+    let { skills, location2, experience } = response;
 
-    if (!skills || !location || !experience) {
+    if (!skills || !location2 || !experience) {
       console.log(response);
       return res.status(422).json({
         error:
@@ -200,14 +200,14 @@ export const getAvailableJobs = async (req, res) => {
 
     console.log("Details extracted:", skills, location, experience);
 
-    if (req.body.location == "remote") {
-      location = "remote";
+    if (location == "remote") {
+      location2 = "remote";
     }
-    if (req.body.location == "hybrid") {
-      location = location + " or remote";
+    if (location == "hybrid") {
+      location2 = location2 + " or remote";
     }
-    console.log(location);
-    const jobDetails = await scrapeIndeed(skills, location);
+
+    const jobDetails = await scrapeIndeed(skills, location2);
 
     if (!jobDetails || jobDetails.length === 0) {
       return res
