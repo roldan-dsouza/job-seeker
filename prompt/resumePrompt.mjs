@@ -30,7 +30,7 @@ export function createSalaryMessages(formattedText, location) {
   return [
     {
       role: "system",
-      content: `Generate a list of jobs along with their corresponding salary ranges (minimum and maximum) per annum based on the provided resume text. Ensure that the salary ranges are relevant to the skills and experience mentioned in the resume. Provide the full annual salary amounts as numbers (e.g., 700000, not 7-8 lakhs), and base the currency code on the job location (e.g., 'INR' for India, 'USD' for the United States). 
+      content: `Generate a list of jobs along with their corresponding salary ranges (minimum and maximum) per annum based on the provided resume text. Ensure that the salary ranges are relevant to the skills and experience mentioned in the resume. Provide the full annual salary amounts as numbers (e.g., 700000, not 7-8 lakhs), and base the currency code on the job location (e.g., 'INR' for India, 'USD' for the United States).make sure to check the internet to give a accurate amount. 
 
       The response must strictly follow this JSON format and include nothing else: 
       [

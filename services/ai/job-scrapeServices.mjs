@@ -1,3 +1,5 @@
+import { fetchFromCloudflare } from "./cloudFLare.mjs";
+
 // Function to fetch job links specifically
 export async function fetchJobLinks(messages) {
   return await fetchFromCloudflare(messages);

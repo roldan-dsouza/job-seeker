@@ -1,6 +1,4 @@
 import { fetchSkillsExperienceLocationFromPdf } from "../utils/userData.mjs";
-import { searchAndScrapeJobDetails } from "../services/jobs/puppeteerSearch.mjs";
-
 import {
   createJobMessages,
   createSalaryMessages,
@@ -15,6 +13,7 @@ import { fetchJobDetailsFromPdf } from "../services/resume/resumeExtractService.
 import { getResumeText } from "../services/resume/resumeTextService.mjs";
 import { runJobSearch } from "../services/jobs/jobSearchFork.mjs";
 import { scrapeIndeed } from "../services/jobs/playwright.search.mjs";
+import { cache } from "../utils/pdf-functions.mjs";
 
 // Middleware for getting insights
 export const getInsights = async (req, res) => {
