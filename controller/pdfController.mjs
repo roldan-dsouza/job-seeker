@@ -14,9 +14,10 @@ import { getResumeText } from "../services/resume/resumeTextService.mjs";
 import { runJobSearch } from "../services/jobs/jobSearchFork.mjs";
 import { scrapeIndeed } from "../services/jobs/playwright.search.mjs";
 import { cache } from "../utils/pdf-functions.mjs";
+import { getInsights } from "../services/insight.services.mjs";
 
 // Middleware for getting insights
-export const getInsights = async (req, res) => {
+export const getInsightsResume = async (req, res) => {
   const ip =
     req.headers["x-forwarded-for"]?.split(",")[0] || req.socket.remoteAddress;
 
@@ -35,7 +36,7 @@ export const getInsights = async (req, res) => {
       ? await pdfFunction(req.file.buffer, ip)
       : cachedText;
 
-    const insights = await insightsService.getInsights(formattedText);
+    const insights = await getInsights(formattedText);
 
     if (insights.status === "INVALID_RESUME") {
       return res.status(400).json({
@@ -47,7 +48,7 @@ export const getInsights = async (req, res) => {
 
     return res.status(200).json({
       success: true,
-      data: insights.data,
+      data: insights,
     });
   } catch (error) {
     console.error("getInsights error", { ip, error });

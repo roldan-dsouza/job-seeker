@@ -1,7 +1,7 @@
 import { Router } from "express";
 import {
   getAvailableJobs,
-  getInsights,
+  getInsightsResume,
   getJobLinks,
   getSalaryRanges,
   searchJobsWithPuppeteer,
@@ -11,7 +11,7 @@ import { validateFileType } from "../helper/pdf.helper.mjs";
 
 const router = Router();
 
-router.post("/insights", upload, validateFileType, getInsights);
+router.post("/insights", upload, validateFileType, getInsightsResume);
 router.post("/jobLinks", upload, validateFileType, getJobLinks);
 router.post("/salaryRange", upload, validateFileType, getSalaryRanges);
 router.get("/jobLinksScrap", upload, validateFileType, searchJobsWithPuppeteer);
