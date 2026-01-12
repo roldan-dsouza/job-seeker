@@ -1,7 +1,5 @@
 import { User } from "../model/user.mjs";
 import * as authService from "../services/auth.services.mjs";
-import { createAccessToken, createRefreshToken } from "../jwtToken.mjs";
-import bcrypt from "bcrypt";
 
 import mongoose from "mongoose";
 import NodeCache from "node-cache";

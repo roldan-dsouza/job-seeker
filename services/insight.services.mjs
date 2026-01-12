@@ -1,6 +1,5 @@
 import { createInsightsMessages } from "../prompt/resumePrompt.mjs";
 import { fetchFromCloudflare } from "./ai/cloudFLare.mjs";
-import { pdfFunction } from "../utils/pdf-functions.mjs";
 
 export const getInsights = async (formattedText) => {
   try {
