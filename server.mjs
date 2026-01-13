@@ -36,8 +36,8 @@ app.use(express.json());
 app.use(cookieParser());
 app.use(express.static(path.join(__dirname, "./public")));
 app.use("/api", indexRouter);
-app.use("/api/signed", signedUserRouter);
-app.use("/api/resume", resumeRouter);
+//app.use("/api/signed", signedUserRouter);
+//app.use("/api/resume", resumeRouter);
 puppeteerExtra.use(StealthPlugin());
 
 app.listen(process.env.PORT, () => {
