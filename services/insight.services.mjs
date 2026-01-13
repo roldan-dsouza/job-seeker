@@ -1,5 +1,6 @@
 import { createInsightsMessages } from "../prompt/resumePrompt.mjs";
 import { fetchFromCloudflare } from "./ai/cloudFLare.mjs";
+import { parseAIJson } from "../utils/jsonParser.mjs";
 
 export const getInsights = async (formattedText) => {
   try {
@@ -12,7 +13,7 @@ export const getInsights = async (formattedText) => {
       throw err;
     }
 
-    return insights.result.response;
+    return parseAIJson(insights.result.response);
   } catch (error) {
     console.error("Error fetching insights:", error);
     throw error;

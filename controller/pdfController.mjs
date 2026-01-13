@@ -48,7 +48,7 @@ export const getInsightsResume = async (req, res) => {
 
     return res.status(200).json({
       success: true,
-      data: insights,
+      insights: insights,
     });
   } catch (error) {
     console.error("getInsights error", { ip, error });
