@@ -155,7 +155,7 @@ export const searchJobsWithPuppeteer = async (req, res) => {
 export const getAvailableJobs = async (req, res) => {
   try {
     const ip = req.ip;
-    const { location } = req.query;
+    const { location } = req.body;
     if (!req.file && !cache.get(ip)) {
       return res
         .status(400)
@@ -188,17 +188,17 @@ export const getAvailableJobs = async (req, res) => {
     }
 
     const response = await fetchSkillsExperienceLocationFromPdf(formattedText);
-    let { skills, location2, experience } = response;
+    let { skills, experience } = response;
+    let location2 = response.location;
 
     if (!skills || !location2 || !experience) {
       console.log(response);
       return res.status(422).json({
-        error:
+        success: false,
+        message:
           "Required details (skills, location, experience) not found in PDF.",
       });
     }
-
-    console.log("Details extracted:", skills, location, experience);
 
     if (location == "remote") {
       location2 = "remote";

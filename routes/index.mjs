@@ -14,7 +14,12 @@ const router = Router();
 router.post("/insights", upload, validateFileType, getInsightsResume);
 router.post("/jobLinks", upload, validateFileType, getJobLinks);
 router.post("/salaryRange", upload, validateFileType, getSalaryRanges);
-router.get("/jobLinksScrap", upload, validateFileType, searchJobsWithPuppeteer);
-router.get("/getJobs", upload, validateFileType, getAvailableJobs);
+router.post(
+  "/jobLinksScrap",
+  upload,
+  validateFileType,
+  searchJobsWithPuppeteer
+);
+router.post("/getJobs", upload, validateFileType, getAvailableJobs);
 
 export default router;

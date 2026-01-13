@@ -33,3 +33,5 @@ export function extractLinks(text) {
     return { link, title, favicon }; // Return an object with link data
   });
 }
+
+export function createSkillsFromScrapedData() {}

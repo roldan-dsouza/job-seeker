@@ -150,3 +150,28 @@ Rules:
 - JSON only
 `.trim(),
 };
+
+export const skillsPrompt = {
+  role: "system",
+  content: `
+Extract ONLY the following from the job description text and return STRICT JSON:
+
+{
+  "requiredSkills": ["<skill>"],
+  "preferredSkills": ["<skill>"],
+  "experienceLevel": "<intern | junior | mid | senior | lead | manager | null>",
+  "yearsOfExperience": <number | null>,
+  "roleType": "<backend | frontend | fullstack | mobile | data | devops | qa | other>",
+  "employmentType": "<full-time | part-time | contract | internship | freelance | null>",
+  "locationType": "<remote | hybrid | onsite | null>"
+}
+
+Rules:
+- Extract ONLY what is explicitly stated or clearly implied
+- Normalize skill names (e.g., "Node js" → "Node.js")
+- Do NOT invent skills or experience
+- If a field is missing, return null or empty array
+- Arrays must always be arrays
+- No extra text, no markdown, JSON ONLY
+`.trim(),
+};
