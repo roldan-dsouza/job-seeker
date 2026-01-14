@@ -109,7 +109,7 @@ export const getSalaryRanges = async (req, res) => {
     }
 
     const salRange = JSON.parse(salaryRanges.result.response);
-    res.status(200).json({ salaryRangeWithJob: salRange });
+    res.status(200).json({ success: true, salaryRangeWithJob: salRange });
   } catch (error) {
     console.error("Error fetching salary ranges:", error);
     res.status(500).json({
