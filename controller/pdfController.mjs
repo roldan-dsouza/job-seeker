@@ -155,7 +155,7 @@ export const searchJobsWithPuppeteer = async (req, res) => {
 export const getAvailableJobs = async (req, res) => {
   try {
     const ip = req.ip;
-    const { location } = req.body;
+
     if (!req.file && !cache.get(ip)) {
       return res
         .status(400)
@@ -167,18 +167,7 @@ export const getAvailableJobs = async (req, res) => {
         .status(415)
         .json({ error: "Unsupported file type. Only PDF files are allowed." });
     }
-    if (!location) {
-      return res
-        .status(400)
-        .json({ error: "Location is required in the request body" });
-    }
-    const validLocations = ["onlocation", "remote", "hybrid"];
-    if (!validLocations.includes(location)) {
-      return res.status(422).json({
-        error:
-          "Invalid location. Accepted values are 'onlocation', 'remote', or 'hybrid'.",
-      });
-    }
+
     const formattedText = req.file
       ? await pdfFunction(req.file.buffer, ip)
       : cache.get(ip);
@@ -188,10 +177,9 @@ export const getAvailableJobs = async (req, res) => {
     }
 
     const response = await fetchSkillsExperienceLocationFromPdf(formattedText);
-    let { skills, experience } = response;
-    let location2 = response.location;
+    let { skills, location, experience } = response;
 
-    if (!skills || !location2 || !experience) {
+    if (!skills || !location || !experience) {
       console.log(response);
       return res.status(422).json({
         success: false,
@@ -201,13 +189,13 @@ export const getAvailableJobs = async (req, res) => {
     }
 
     if (location == "remote") {
-      location2 = "remote";
+      location = "remote";
     }
     if (location == "hybrid") {
-      location2 = location2 + " or remote";
+      location = location + " or remote";
     }
 
-    const jobDetails = await scrapeIndeed(skills, location2);
+    const jobDetails = await scrapeIndeed(skills, location);
 
     if (!jobDetails || jobDetails.length === 0) {
       return res
@@ -215,7 +203,7 @@ export const getAvailableJobs = async (req, res) => {
         .json({ message: "No job listings found based on provided details." });
     }
 
-    res.status(200).json(jobDetails);
+    res.status(200).json({ success: true, jobs: jobDetails });
   } catch (error) {
     console.error("Error in getAvailableJobs:", error);
     res
